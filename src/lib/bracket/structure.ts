@@ -43,7 +43,8 @@ export const VH = 980;
 export const CX = 440;
 export const CY = 490;
 const MAXR = 380;
-const GAP = 12; // degrees of empty space at the top & bottom seams
+const LEAF_ANGLE_STEP = 360 / (LEFT_HALF.length + RIGHT_HALF.length);
+const TOP_AXIS = 90;
 
 const RADIUS_FRACTION: Record<string, number> = {
   LEAF: 1.0,
@@ -75,12 +76,11 @@ function place(angleDeg: number, fraction: number, flagR: number) {
 }
 
 function assignLeaves(half: 'L' | 'R', leaves: TeamId[]) {
-  const n = leaves.length;
   leaves.forEach((team, i) => {
     const angle =
       half === 'R'
-        ? 90 - GAP - ((180 - 2 * GAP) * i) / (n - 1) // top seam, clockwise down the right
-        : 90 + GAP + ((180 - 2 * GAP) * i) / (n - 1); // top seam, counter-clockwise down the left
+        ? TOP_AXIS - LEAF_ANGLE_STEP / 2 - LEAF_ANGLE_STEP * i
+        : TOP_AXIS + LEAF_ANGLE_STEP / 2 + LEAF_ANGLE_STEP * i;
     const id = `leaf-${team}`;
     angleOf.set(id, angle);
     nodes.set(id, {
