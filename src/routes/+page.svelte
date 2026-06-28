@@ -131,13 +131,13 @@
       confettiArmed = true;
       return;
     }
-    if (current && current !== lastChamp) celebrate();
+    if (current && current !== lastChamp) celebrate(current);
     lastChamp = current;
   });
 
-  async function celebrate() {
+  async function celebrate(winner: TeamId) {
     const confetti = (await import('canvas-confetti')).default;
-    const colors = ['#e7c24a', '#c8992f', '#1c7a3d', '#fbf3d0', '#1a1916'];
+    const colors = TEAMS[winner].flagColors;
     const opts = { colors, disableForReducedMotion: true, zIndex: 9999 };
     confetti({ ...opts, particleCount: 130, spread: 90, startVelocity: 45, origin: { y: 0.4 } });
     confetti({ ...opts, particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.6 } });
