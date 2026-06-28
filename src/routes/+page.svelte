@@ -120,6 +120,13 @@
     return flagUrls[team];
   }
 
+  function flagAccentColor(team: TeamId) {
+    return (
+      TEAMS[team].flagColors.find((color) => !['#ffffff', '#000000'].includes(color.toLowerCase())) ??
+      TEAMS[team].flagColors[0]
+    );
+  }
+
   function polarPoint(angle: number, radius: number) {
     return {
       x: CX + radius * Math.cos(angle),
@@ -169,6 +176,18 @@
     }
 
     return false;
+  }
+
+  function connectorTeam(c: Connector): TeamId | undefined {
+    if (picks[c.matchId] !== c.side) return undefined;
+    const match = matchById(c.matchId);
+    const child = c.side === 0 ? match.a : match.b;
+    return resolveTeam(child, picks);
+  }
+
+  function connectorColor(c: Connector): string | undefined {
+    const team = connectorTeam(c);
+    return team ? flagAccentColor(team) : undefined;
   }
 
   // Celebrate when a champion is crowned or changed — but not on the initial
@@ -313,6 +332,7 @@
           class="conn"
           class:conn--picked={picks[c.matchId] === c.side}
           class:conn--champion={isChampionConnector(c.matchId, c.side)}
+          style:--pick-color={connectorColor(c)}
         />
       {/each}
 
@@ -366,6 +386,7 @@
           class:champseat={isChampSeat}
           class:picked={isPicked}
           class:championpick={isChampionPick}
+          style:--pick-color={team ? flagAccentColor(team) : undefined}
           role={team ? 'button' : undefined}
           tabindex={team ? 0 : undefined}
           aria-label={team ? TEAMS[team].name : 'Awaiting winner'}
@@ -631,10 +652,10 @@
       filter 0.2s ease;
   }
   .conn--picked {
-    stroke: var(--green);
+    stroke: var(--pick-color, var(--green));
     stroke-width: 3.5;
     opacity: 1;
-    filter: drop-shadow(0 0 5px rgba(28, 122, 61, 0.45));
+    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--pick-color, var(--green)) 45%, transparent));
   }
   .conn--champion {
     stroke: var(--gold);
@@ -688,9 +709,9 @@
   }
 
   .picked .ring {
-    stroke: var(--green);
+    stroke: var(--pick-color, var(--green));
     stroke-width: 3;
-    filter: drop-shadow(0 0 5px rgba(28, 122, 61, 0.45));
+    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--pick-color, var(--green)) 45%, transparent));
   }
 
   .championpick .ring {
