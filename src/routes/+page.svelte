@@ -58,7 +58,7 @@
   let picks = $state<Picks>({});
   let flashing = $state<Set<string>>(new Set());
   let ready = $state(false);
-  let copied = $state(false);
+  let shareStatus = $state<'idle' | 'shared' | 'copied'>('idle');
 
   // Initial state: shared bracket from the URL, else the real-world default.
   onMount(() => {
@@ -171,14 +171,40 @@
   function loadReal() {
     picks = picksFromResults(defaultResults);
   }
+
+  function shareText() {
+    const tieLabel = decided === 1 ? 'tie' : 'ties';
+    return champ
+      ? `I picked ${TEAMS[champ].name} to win the ${TITLE}.`
+      : `I picked ${decided} ${tieLabel} in the ${TITLE} knockout predictor.`;
+  }
+
   async function share() {
+    const data = {
+      title: TITLE,
+      text: shareText(),
+      url: location.href
+    };
+
     try {
-      await navigator.clipboard.writeText(location.href);
-      copied = true;
-      setTimeout(() => (copied = false), 1600);
+      if (navigator.share) {
+        await navigator.share(data);
+        shareStatus = 'shared';
+      } else {
+        await navigator.clipboard.writeText(data.url);
+        shareStatus = 'copied';
+      }
+      setTimeout(() => (shareStatus = 'idle'), 1600);
     } catch {
-      copied = false;
+      shareStatus = 'idle';
     }
+  }
+
+  function shareToX() {
+    const url = new URL('https://twitter.com/intent/tweet');
+    url.searchParams.set('text', shareText());
+    url.searchParams.set('url', location.href);
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   const decided = $derived(Object.keys(picks).length);
@@ -207,14 +233,17 @@
 
     <p class="hint">
       {#if champ}
-        Bracket complete — copy the link to share it.
+        Bracket complete — share the link.
       {:else}
         Pick the winner of every tie. Your bracket saves to the link.
       {/if}
     </p>
 
     <div class="actions">
-      <button class="btn btn--go" onclick={share}>{copied ? 'Copied ✓' : 'Copy link'}</button>
+      <button class="btn btn--go" onclick={share}>
+        {shareStatus === 'shared' ? 'Shared' : shareStatus === 'copied' ? 'Link copied' : 'Share'}
+      </button>
+      <button class="btn btn--x" onclick={shareToX} aria-label="Share to X">X</button>
       <button class="btn" onclick={loadReal} title="Load the real-world results from config.ts">
         Real results
       </button>
@@ -482,6 +511,21 @@
   .btn--go:hover {
     background: var(--gold);
     border-color: var(--gold);
+  }
+  .btn--x {
+    min-width: 2.7rem;
+    padding-inline: 0.8rem;
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+    font-family: var(--display);
+    font-size: 0.82rem;
+    font-weight: 900;
+    letter-spacing: 0;
+  }
+  .btn--x:hover {
+    background: #000;
+    border-color: #000;
   }
   .btn:focus-visible {
     outline: 2px solid var(--gold);
