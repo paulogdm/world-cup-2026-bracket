@@ -327,13 +327,17 @@
   <div class="board">
     <svg viewBox="0 0 {VW} {VH}" role="group" aria-label="{TITLE} bracket">
       {#each connectors as c}
-        <path
-          d={connectorPath(c)}
-          class="conn"
-          class:conn--picked={picks[c.matchId] === c.side}
-          class:conn--champion={isChampionConnector(c.matchId, c.side)}
-          style:--pick-color={connectorColor(c)}
-        />
+        <path d={connectorPath(c)} class="conn" />
+      {/each}
+      {#each connectors as c}
+        {#if picks[c.matchId] === c.side}
+          <path
+            d={connectorPath(c)}
+            class="conn conn--picked"
+            class:conn--champion={isChampionConnector(c.matchId, c.side)}
+            style:--pick-color={connectorColor(c)}
+          />
+        {/if}
       {/each}
 
       <!-- The FIFA World Cup trophy. -->
