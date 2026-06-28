@@ -50,6 +50,31 @@
   const champNode = $derived(championNode(picks));
   const TROPHY_IMAGE_URL = '/world-cup-trophy.svg';
 
+  // Celebrate when a champion is crowned or changed — but not on the initial
+  // load of a shared bracket, and not when the final is cleared.
+  let lastChamp: TeamId | undefined;
+  let confettiArmed = false;
+  $effect(() => {
+    const current = champ;
+    if (!ready) return;
+    if (!confettiArmed) {
+      lastChamp = current;
+      confettiArmed = true;
+      return;
+    }
+    if (current && current !== lastChamp) celebrate();
+    lastChamp = current;
+  });
+
+  async function celebrate() {
+    const confetti = (await import('canvas-confetti')).default;
+    const colors = ['#e7c24a', '#c8992f', '#1c7a3d', '#fbf3d0', '#1a1916'];
+    const opts = { colors, disableForReducedMotion: true, zIndex: 9999 };
+    confetti({ ...opts, particleCount: 130, spread: 90, startVelocity: 45, origin: { y: 0.4 } });
+    confetti({ ...opts, particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.6 } });
+    confetti({ ...opts, particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.6 } });
+  }
+
   function teamOf(id: string): TeamId | undefined {
     return resolveTeam(id, picks);
   }

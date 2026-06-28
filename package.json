@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@sveltejs/adapter-vercel": "^5.4.0",
+    "@types/canvas-confetti": "^1.6.4",
     "@sveltejs/kit": "^2.8.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "svelte": "^5.19.0",
@@ -19,6 +20,7 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
+    "canvas-confetti": "^1.9.3",
     "flag-icons": "^7.2.3"
   }
 }
