@@ -1,6 +1,37 @@
 <script lang="ts">
-  import 'flag-icons/css/flag-icons.min.css';
   import { onMount } from 'svelte';
+  import flagAr from 'flag-icons/flags/1x1/ar.svg?url';
+  import flagAt from 'flag-icons/flags/1x1/at.svg?url';
+  import flagAu from 'flag-icons/flags/1x1/au.svg?url';
+  import flagBa from 'flag-icons/flags/1x1/ba.svg?url';
+  import flagBe from 'flag-icons/flags/1x1/be.svg?url';
+  import flagBr from 'flag-icons/flags/1x1/br.svg?url';
+  import flagCa from 'flag-icons/flags/1x1/ca.svg?url';
+  import flagCd from 'flag-icons/flags/1x1/cd.svg?url';
+  import flagCh from 'flag-icons/flags/1x1/ch.svg?url';
+  import flagCi from 'flag-icons/flags/1x1/ci.svg?url';
+  import flagCo from 'flag-icons/flags/1x1/co.svg?url';
+  import flagCv from 'flag-icons/flags/1x1/cv.svg?url';
+  import flagDe from 'flag-icons/flags/1x1/de.svg?url';
+  import flagDz from 'flag-icons/flags/1x1/dz.svg?url';
+  import flagEc from 'flag-icons/flags/1x1/ec.svg?url';
+  import flagEg from 'flag-icons/flags/1x1/eg.svg?url';
+  import flagEs from 'flag-icons/flags/1x1/es.svg?url';
+  import flagFr from 'flag-icons/flags/1x1/fr.svg?url';
+  import flagGbEng from 'flag-icons/flags/1x1/gb-eng.svg?url';
+  import flagGh from 'flag-icons/flags/1x1/gh.svg?url';
+  import flagHr from 'flag-icons/flags/1x1/hr.svg?url';
+  import flagJp from 'flag-icons/flags/1x1/jp.svg?url';
+  import flagMa from 'flag-icons/flags/1x1/ma.svg?url';
+  import flagMx from 'flag-icons/flags/1x1/mx.svg?url';
+  import flagNl from 'flag-icons/flags/1x1/nl.svg?url';
+  import flagNo from 'flag-icons/flags/1x1/no.svg?url';
+  import flagPt from 'flag-icons/flags/1x1/pt.svg?url';
+  import flagPy from 'flag-icons/flags/1x1/py.svg?url';
+  import flagSe from 'flag-icons/flags/1x1/se.svg?url';
+  import flagSn from 'flag-icons/flags/1x1/sn.svg?url';
+  import flagUs from 'flag-icons/flags/1x1/us.svg?url';
+  import flagZa from 'flag-icons/flags/1x1/za.svg?url';
 
   import {
     allNodes,
@@ -49,6 +80,44 @@
   const champ = $derived(champion(picks));
   const champNode = $derived(championNode(picks));
   const TROPHY_IMAGE_URL = '/world-cup-trophy.svg';
+  const flagUrls: Record<TeamId, string> = {
+    ar: flagAr,
+    at: flagAt,
+    au: flagAu,
+    ba: flagBa,
+    be: flagBe,
+    br: flagBr,
+    ca: flagCa,
+    cd: flagCd,
+    ch: flagCh,
+    ci: flagCi,
+    co: flagCo,
+    cv: flagCv,
+    de: flagDe,
+    dz: flagDz,
+    ec: flagEc,
+    eg: flagEg,
+    es: flagEs,
+    fr: flagFr,
+    'gb-eng': flagGbEng,
+    gh: flagGh,
+    hr: flagHr,
+    jp: flagJp,
+    ma: flagMa,
+    mx: flagMx,
+    nl: flagNl,
+    no: flagNo,
+    pt: flagPt,
+    py: flagPy,
+    se: flagSe,
+    sn: flagSn,
+    us: flagUs,
+    za: flagZa
+  };
+
+  function flagUrl(team: TeamId): string {
+    return flagUrls[team];
+  }
 
   // Celebrate when a champion is crowned or changed — but not on the initial
   // load of a shared bracket, and not when the final is cleared.
@@ -127,7 +196,7 @@
     <div class="readout" aria-live="polite">
       {#if champ}
         <span class="readout__crown">Champions</span>
-        <span class="fi fis fi-{champ} readout__flag" aria-hidden="true"></span>
+        <img class="readout__flag" src={flagUrl(champ)} alt="" aria-hidden="true" />
         <span class="readout__name">{TEAMS[champ].name}</span>
       {:else}
         <span class="readout__num">{decided}</span>
@@ -176,12 +245,19 @@
       <!-- centre: trophy until the final is decided, then the champion writ large -->
       {#if champ}
         <g class="champion" transform="translate({CX},{CY})">
+          <clipPath id="champion-flag-clip">
+            <circle r="44" />
+          </clipPath>
+          <image
+            href={flagUrl(champ)}
+            x={-44}
+            y={-44}
+            width={88}
+            height={88}
+            preserveAspectRatio="xMidYMid slice"
+            clip-path="url(#champion-flag-clip)"
+          />
           <circle r="46" class="champion-ring" />
-          <foreignObject x={-44} y={-44} width={88} height={88}>
-            <div xmlns="http://www.w3.org/1999/xhtml" class="flagwrap">
-              <span class="fi fis fi-{champ}"></span>
-            </div>
-          </foreignObject>
           <g transform="translate(0,-70)">{@render trophy(0.28)}</g>
         </g>
       {:else}
@@ -204,14 +280,21 @@
           onclick={() => pick(n.id)}
           onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), pick(n.id))}
         >
-          <circle r={n.r} class="ring" class:empty={!team} />
           {#if team}
-            <foreignObject x={-n.r} y={-n.r} width={n.r * 2} height={n.r * 2}>
-              <div xmlns="http://www.w3.org/1999/xhtml" class="flagwrap">
-                <span class="fi fis fi-{team}"></span>
-              </div>
-            </foreignObject>
+            <clipPath id="flag-clip-{n.id}">
+              <circle r={n.r} />
+            </clipPath>
+            <image
+              href={flagUrl(team)}
+              x={-n.r}
+              y={-n.r}
+              width={n.r * 2}
+              height={n.r * 2}
+              preserveAspectRatio="xMidYMid slice"
+              clip-path="url(#flag-clip-{n.id})"
+            />
           {/if}
+          <circle r={n.r} class="ring" class:empty={!team} class:filled={team} />
         </g>
       {/each}
     </svg>
@@ -337,6 +420,7 @@
     width: 1.7em;
     height: 1.7em;
     border-radius: 50%;
+    object-fit: cover;
     box-shadow:
       0 0 0 2px var(--paper),
       0 0 0 4px var(--gold-fill);
@@ -426,7 +510,7 @@
     fill: none;
   }
   .champion-ring {
-    fill: #f2efe4;
+    fill: none;
     stroke: #d9b34a;
     stroke-width: 5;
     filter: drop-shadow(0 0 10px rgba(217, 179, 74, 0.85));
@@ -462,6 +546,9 @@
     stroke: #b8b3a3;
     stroke-dasharray: 3 3;
   }
+  .ring.filled {
+    fill: none;
+  }
   .node.clickable:hover .ring,
   .node.clickable:focus-visible .ring {
     stroke: #d9b34a;
@@ -488,18 +575,4 @@
     }
   }
 
-  .flagwrap {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    overflow: hidden;
-  }
-  .flagwrap :global(.fi) {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background-size: cover;
-    background-position: center;
-    line-height: 1;
-  }
 </style>
