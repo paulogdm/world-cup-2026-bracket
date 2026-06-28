@@ -158,9 +158,11 @@ export const MATCH_ORDER: string[] = (() => {
   return order;
 })();
 
-// Connectors: two straight segments per match, child node -> output node.
+// Connectors: two branches per match, child node -> output node.
 // For the final, the output is the centre trophy.
 export interface Connector {
+  matchId: string;
+  side: 0 | 1;
   x1: number;
   y1: number;
   x2: number;
@@ -171,7 +173,7 @@ export const connectors: Connector[] = matches.flatMap((m) => {
   const a = nodes.get(m.a)!;
   const b = nodes.get(m.b)!;
   return [
-    { x1: a.x, y1: a.y, x2: out.x, y2: out.y },
-    { x1: b.x, y1: b.y, x2: out.x, y2: out.y }
+    { matchId: m.id, side: 0, x1: a.x, y1: a.y, x2: out.x, y2: out.y },
+    { matchId: m.id, side: 1, x1: b.x, y1: b.y, x2: out.x, y2: out.y }
   ];
 });

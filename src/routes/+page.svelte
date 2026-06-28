@@ -40,7 +40,8 @@
     CX,
     CY,
     VW,
-    VH
+    VH,
+    type Connector
   } from '$lib/bracket/structure';
   import {
     resolveTeam,
@@ -117,6 +118,39 @@
 
   function flagUrl(team: TeamId): string {
     return flagUrls[team];
+  }
+
+  function polarPoint(angle: number, radius: number) {
+    return {
+      x: CX + radius * Math.cos(angle),
+      y: CY - radius * Math.sin(angle)
+    };
+  }
+
+  function connectorPath(c: Connector): string {
+    const startAngle = Math.atan2(CY - c.y1, c.x1 - CX);
+    const endAngle = Math.atan2(CY - c.y2, c.x2 - CX);
+    const startRadius = Math.hypot(c.x1 - CX, c.y1 - CY);
+    const endRadius = Math.hypot(c.x2 - CX, c.y2 - CY);
+
+    if (endRadius < 1) {
+      const control = polarPoint(startAngle, startRadius * 0.42);
+      return `M ${c.x1} ${c.y1} Q ${control.x} ${control.y} ${c.x2} ${c.y2}`;
+    }
+
+    const bendRadius = (startRadius + endRadius) / 2;
+    const startBend = polarPoint(startAngle, bendRadius);
+    const endBend = polarPoint(endAngle, bendRadius);
+    const rawDelta = endAngle - startAngle;
+    const delta = Math.atan2(Math.sin(rawDelta), Math.cos(rawDelta));
+    const sweep = delta < 0 ? 1 : 0;
+
+    return [
+      `M ${c.x1} ${c.y1}`,
+      `L ${startBend.x} ${startBend.y}`,
+      `A ${bendRadius} ${bendRadius} 0 0 ${sweep} ${endBend.x} ${endBend.y}`,
+      `L ${c.x2} ${c.y2}`
+    ].join(' ');
   }
 
   // Celebrate when a champion is crowned or changed — but not on the initial
@@ -256,7 +290,11 @@
   <div class="board">
     <svg viewBox="0 0 {VW} {VH}" role="group" aria-label="{TITLE} bracket">
       {#each connectors as c}
-        <line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} class="conn" />
+        <path
+          d={connectorPath(c)}
+          class="conn"
+          class:conn--picked={picks[c.matchId] === c.side}
+        />
       {/each}
 
       <!-- The FIFA World Cup trophy. -->
@@ -298,6 +336,7 @@
       {#each allNodes as n (n.id)}
         {@const team = teamOf(n.id)}
         {@const isChampSeat = champNode === n.id}
+        {@const isPicked = n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
         <g
           transform="translate({n.x},{n.y})"
           data-node={n.id}
@@ -305,6 +344,7 @@
           class:clickable={team}
           class:flash={flashing.has(n.id)}
           class:champseat={isChampSeat}
+          class:picked={isPicked}
           role={team ? 'button' : undefined}
           tabindex={team ? 0 : undefined}
           aria-label={team ? TEAMS[team].name : 'Awaiting winner'}
@@ -491,7 +531,7 @@
     background: transparent;
     color: var(--ink);
     padding: 0.55rem 0.95rem;
-    border-radius: 2px;
+    border-radius: 999px;
     cursor: pointer;
     transition:
       background 0.15s ease,
@@ -558,8 +598,22 @@
 
   .conn {
     stroke: #2a2925;
-    stroke-width: 1.4;
+    stroke-width: 1.7;
     fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.5;
+    transition:
+      opacity 0.2s ease,
+      stroke 0.2s ease,
+      stroke-width 0.2s ease,
+      filter 0.2s ease;
+  }
+  .conn--picked {
+    stroke: var(--gold);
+    stroke-width: 4.5;
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.65));
   }
   .champion-ring {
     fill: none;
@@ -605,6 +659,12 @@
   .node.clickable:focus-visible .ring {
     stroke: #d9b34a;
     stroke-width: 3;
+  }
+
+  .picked .ring {
+    stroke: var(--gold);
+    stroke-width: 3.5;
+    filter: drop-shadow(0 0 5px rgba(217, 179, 74, 0.65));
   }
 
   .champseat .ring {
