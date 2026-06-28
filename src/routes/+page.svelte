@@ -153,6 +153,24 @@
     ].join(' ');
   }
 
+  function isChampionConnector(matchId: string, side: 0 | 1) {
+    if (!champ) return false;
+    let id: string | null = 'F';
+
+    while (id) {
+      const selected = picks[id];
+      if (selected === undefined) return false;
+      if (id === matchId) return selected === side;
+
+      const match = matchById(id);
+      const nextNode = selected === 0 ? match.a : match.b;
+      const nextMatch = matchById(nextNode);
+      id = nextMatch?.id ?? null;
+    }
+
+    return false;
+  }
+
   // Celebrate when a champion is crowned or changed — but not on the initial
   // load of a shared bracket, and not when the final is cleared.
   let lastChamp: TeamId | undefined;
@@ -294,6 +312,7 @@
           d={connectorPath(c)}
           class="conn"
           class:conn--picked={picks[c.matchId] === c.side}
+          class:conn--champion={isChampionConnector(c.matchId, c.side)}
         />
       {/each}
 
@@ -337,6 +356,7 @@
         {@const team = teamOf(n.id)}
         {@const isChampSeat = champNode === n.id}
         {@const isPicked = n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
+        {@const isChampionPick = n.parentMatch !== undefined && n.side !== undefined && isChampionConnector(n.parentMatch, n.side)}
         <g
           transform="translate({n.x},{n.y})"
           data-node={n.id}
@@ -345,6 +365,7 @@
           class:flash={flashing.has(n.id)}
           class:champseat={isChampSeat}
           class:picked={isPicked}
+          class:championpick={isChampionPick}
           role={team ? 'button' : undefined}
           tabindex={team ? 0 : undefined}
           aria-label={team ? TEAMS[team].name : 'Awaiting winner'}
@@ -610,9 +631,14 @@
       filter 0.2s ease;
   }
   .conn--picked {
+    stroke: var(--green);
+    stroke-width: 3.5;
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(28, 122, 61, 0.45));
+  }
+  .conn--champion {
     stroke: var(--gold);
     stroke-width: 4.5;
-    opacity: 1;
     filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.65));
   }
   .champion-ring {
@@ -662,6 +688,12 @@
   }
 
   .picked .ring {
+    stroke: var(--green);
+    stroke-width: 3;
+    filter: drop-shadow(0 0 5px rgba(28, 122, 61, 0.45));
+  }
+
+  .championpick .ring {
     stroke: var(--gold);
     stroke-width: 3.5;
     filter: drop-shadow(0 0 5px rgba(217, 179, 74, 0.65));
