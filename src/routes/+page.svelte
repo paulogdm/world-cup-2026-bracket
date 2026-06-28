@@ -243,7 +243,9 @@
       <button class="btn btn--go" onclick={share}>
         {shareStatus === 'shared' ? 'Shared' : shareStatus === 'copied' ? 'Link copied' : 'Share'}
       </button>
-      <button class="btn btn--x" onclick={shareToX} aria-label="Share to X">X</button>
+      <button class="btn btn--x" onclick={shareToX} aria-label="Share to X">
+        <img src="/x-logo.svg" alt="" aria-hidden="true" />
+      </button>
       <button class="btn" onclick={loadReal} title="Load the real-world results from config.ts">
         Real results
       </button>
@@ -522,6 +524,12 @@
     font-size: 0.82rem;
     font-weight: 900;
     letter-spacing: 0;
+  }
+  .btn--x img {
+    display: block;
+    width: 0.95rem;
+    height: 0.95rem;
+    filter: invert(1);
   }
   .btn--x:hover {
     background: #000;
