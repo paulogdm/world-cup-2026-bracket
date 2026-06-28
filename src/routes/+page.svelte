@@ -82,6 +82,7 @@
   const champ = $derived(champion(picks));
   const champNode = $derived(championNode(picks));
   const TROPHY_IMAGE_URL = '/world-cup-trophy.svg';
+  const REPOSITORY_URL = 'https://github.com/paulogdm/world-cup-2026-bracket';
   const flagUrls: Record<TeamId, string> = {
     ar: flagAr,
     at: flagAt,
@@ -439,6 +440,12 @@
       {/each}
     </svg>
   </div>
+
+  <footer class="site-footer">
+    <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub</a>
+    <span aria-hidden="true">/</span>
+    <a href="{REPOSITORY_URL}/compare" target="_blank" rel="noreferrer">Create a PR</a>
+  </footer>
 </main>
 
 <style>
@@ -658,6 +665,35 @@
   .board {
     width: 100%;
   }
+
+  .site-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    margin-top: 1.1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .site-footer a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .site-footer a:hover {
+    color: var(--ink);
+  }
+  .site-footer a:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+
   svg {
     width: 100%;
     height: auto;
