@@ -60,6 +60,7 @@
   let flashing = $state<Set<string>>(new Set());
   let ready = $state(false);
   let shareStatus = $state<'idle' | 'shared' | 'copied'>('idle');
+  let activePopoverNode = $state<string | null>(null);
 
   // Initial state: shared bracket from the URL, else the real-world default.
   onMount(() => {
@@ -396,6 +397,10 @@
           aria-label={team ? TEAMS[team].name : 'Awaiting winner'}
           onclick={() => pick(n.id)}
           onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), pick(n.id))}
+          onpointerenter={() => team && (activePopoverNode = n.id)}
+          onpointerleave={() => activePopoverNode === n.id && (activePopoverNode = null)}
+          onfocus={() => team && (activePopoverNode = n.id)}
+          onblur={() => activePopoverNode === n.id && (activePopoverNode = null)}
         >
           {#if team}
             <clipPath id="flag-clip-{n.id}">
@@ -412,6 +417,24 @@
             />
           {/if}
           <circle r={n.r} class="ring" class:empty={!team} class:filled={team} />
+          {#if team}
+            <g
+              class="country-popover"
+              class:country-popover--visible={activePopoverNode === n.id}
+              transform="translate(0,{-n.r - 18})"
+            >
+              <rect
+                x={-TEAMS[team].name.length * 3.8 - 10}
+                y="-16"
+                width={TEAMS[team].name.length * 7.6 + 20}
+                height="24"
+                rx="12"
+              />
+              <text text-anchor="middle" dominant-baseline="middle" y="-4">
+                {TEAMS[team].name}
+              </text>
+            </g>
+          {/if}
         </g>
       {/each}
     </svg>
@@ -728,6 +751,29 @@
     stroke: #d9b34a;
     stroke-width: 4;
     filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.8));
+  }
+
+  .country-popover {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .country-popover rect {
+    fill: var(--ink);
+    stroke: rgba(242, 239, 228, 0.42);
+    stroke-width: 1;
+    filter: drop-shadow(0 2px 5px rgba(26, 25, 22, 0.22));
+  }
+  .country-popover text {
+    fill: var(--paper);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .country-popover--visible {
+    opacity: 1;
   }
 
   .flash .ring {
