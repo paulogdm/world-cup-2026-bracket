@@ -88,6 +88,3 @@ export const defaultResults: Record<string, TeamId> = {
 - Flag codes are ISO 3166-1 alpha-2 (lowercase), with England as the `gb-eng`
   subdivision — see `teams.ts`.
 
----
-
-_Vibecoded with [Claude Code](https://claude.com/claude-code) 🤖_
