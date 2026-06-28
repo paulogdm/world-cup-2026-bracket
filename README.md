@@ -4,7 +4,7 @@ An interactive, shareable version of the radial **World Cup 2026** knockout
 poster. Click a flag to advance it through the rounds; the whole bracket is
 encoded in the URL, so your predictions are one copy-paste away from a friend.
 
-> _Vibecoded_ — built conversationally with Claude Code, one prompt at a time.
+> _Vibecoded_ — built with Claude and Codex, one slop at a time.
 
 <!-- Drop a screenshot/GIF here once you have one: -->
 <!-- ![screenshot](docs/screenshot.png) -->
