@@ -69,6 +69,39 @@ describe('codec round-trip', () => {
   });
 });
 
+describe('golden codec vectors', () => {
+  // Frozen `encoded string <-> picks` pairs. The round-trip tests above prove
+  // the codec is self-consistent, but they would still pass if the wire format
+  // changed wholesale. These vectors pin the *exact* bytes so that any change to
+  // the encoding fails loudly here — every `?b=...` link ever shared must keep
+  // decoding to the same bracket forever. If one of these breaks, you have
+  // almost certainly broken backward compatibility for shared links.
+  const allSides = (side: 0 | 1): Picks =>
+    Object.fromEntries(MATCH_ORDER.map((id) => [id, side]));
+
+  const vectors: { name: string; encoded: string; picks: Picks }[] = [
+    { name: 'first match, top side', encoded: '1', picks: { 'R32-01': 0 } },
+    { name: 'first match, bottom side', encoded: '2', picks: { 'R32-01': 1 } },
+    { name: 'second match, top side', encoded: '3', picks: { 'R32-02': 0 } },
+    {
+      name: 'a resolvable chain into R16-01',
+      encoded: 'pmn2d',
+      picks: { 'R32-01': 0, 'R32-02': 0, 'R16-01': 0 }
+    },
+    { name: 'every match won by the top side', encoded: '31h1mc59ud', picks: allSides(0) },
+    { name: 'every match won by the bottom side', encoded: '62y38oajoq', picks: allSides(1) }
+  ];
+
+  for (const { name, encoded, picks } of vectors) {
+    it(`decodes the golden vector: ${name}`, () => {
+      expect(decode(encoded)).toEqual(picks);
+    });
+    it(`encodes to the golden vector: ${name}`, () => {
+      expect(encode(picks)).toBe(encoded);
+    });
+  }
+});
+
 describe('decode robustness', () => {
   it('returns an empty bracket for corrupt (non-base-36) input', () => {
     expect(decode('!!!')).toEqual({});
