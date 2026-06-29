@@ -169,7 +169,7 @@
 
   function shareText() {
     return champ
-      ? `Check my prediction, ${TEAMS[champ].name} will be champion! ${location.href}`
+      ? `Check my prediction: ${TEAMS[champ].name} will be champion! ${location.href}`
       : `Check the interactive knockout stage here: ${location.href}`;
   }
 
