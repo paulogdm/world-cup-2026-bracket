@@ -13,8 +13,30 @@
     type Picks
   } from '$lib/bracket/state';
   import { TEAMS, type TeamId } from '$lib/bracket/teams';
-  import { defaultResults, TITLE } from '$lib/bracket/config';
+  import { defaultResults } from '$lib/bracket/config';
   import { flagUrl } from '$lib/bracket/flags';
+  import { LOCALES, LOCALE_META, type Locale } from '$lib/i18n/locales';
+  import { STRINGS } from '$lib/i18n/strings';
+  import { localizedTeamName } from '$lib/i18n/team-names';
+  import { i18n, initLocale } from '$lib/i18n/store.svelte';
+  import { THEMES, type Theme } from '$lib/theme/themes';
+  import { theme, initTheme } from '$lib/theme/store.svelte';
+
+  // Current UI strings, reactive to the selected locale.
+  const t = $derived(STRINGS[i18n.locale]);
+  const teamName = (id: TeamId) => localizedTeamName(id, i18n.locale);
+
+  // Localized name for each theme, used in the toggle's accessible label.
+  const themeName = $derived<Record<Theme, string>>({
+    system: t.themeSystem,
+    light: t.themeLight,
+    dark: t.themeDark
+  });
+  // The toggle cycles through the modes in declared order (system → light → dark).
+  function cycleTheme() {
+    const next = (THEMES.indexOf(theme.value) + 1) % THEMES.length;
+    theme.value = THEMES[next];
+  }
 
   type ShareStatus =
     | 'idle'
@@ -26,10 +48,23 @@
     | 'shared'
     | 'error';
 
-  let picks = $state<Picks>({});
+  // The real-world default state. Computed once so it can seed the prerendered
+  // markup *and* be compared against on every URL sync (see below).
+  const DEFAULT_PICKS = picksFromResults(defaultResults);
+  const DEFAULT_ENCODED = encode(DEFAULT_PICKS);
+
+  // Seed with the default so the prerendered HTML already shows the real
+  // bracket (no empty-skeleton flash, real content for crawlers/no-JS). A
+  // shared `?b=...` bracket is applied client-side in onMount.
+  let picks = $state<Picks>(DEFAULT_PICKS);
   let flashing = $state<Set<string>>(new Set());
   let ready = $state(false);
   let activePopoverNode = $state<string | null>(null);
+
+  // Effective light/dark scheme, used to bake the right colours into the
+  // exported image (see BracketSvg's `theme` prop). Resolves `system` against
+  // the OS preference and tracks both the toggle and OS changes.
+  let effectiveTheme = $state<'light' | 'dark'>('light');
 
   // Share popup state.
   let shareOpen = $state(false);
@@ -50,21 +85,63 @@
   const BRACKET_VIEW_HEIGHT = VH - BRACKET_TOP_CROP;
   const REPOSITORY_URL = 'https://github.com/paulogdm/world-cup-2026-bracket';
 
-  // Initial state: shared bracket from the URL, else the real-world default.
+  // Flags for the language switcher (kept separate from the team flags, which
+  // live in `flags.ts`, so the switcher doesn't depend on those codes happening
+  // to be teams).
+  const localeFlagModules = import.meta.glob<string>(
+    '/node_modules/flag-icons/flags/1x1/{us,br,es}.svg',
+    { eager: true, import: 'default', query: '?url' }
+  );
+  const localeFlagUrls = Object.fromEntries(
+    Object.entries(localeFlagModules).map(([path, url]) => [path.match(/\/([^/]+)\.svg$/)![1], url])
+  ) as Record<string, string>;
+  const localeFlag = (loc: Locale) => localeFlagUrls[LOCALE_META[loc].flag];
+
+  function resolveEffectiveTheme(): 'light' | 'dark' {
+    const value = theme.value;
+    if (value === 'light' || value === 'dark') return value;
+    return typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  }
+
+  // Initial state: shared bracket from the URL (else the seeded default), plus
+  // the resolved locale / theme and share capabilities.
   onMount(() => {
+    initLocale();
+    initTheme();
     const b = new URLSearchParams(location.search).get('b');
-    picks = b ? decode(b) : picksFromResults(defaultResults);
+    if (b) picks = decode(b);
     shareUrl = location.href;
     canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
+    effectiveTheme = resolveEffectiveTheme();
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onScheme = () => (effectiveTheme = resolveEffectiveTheme());
+    mq.addEventListener('change', onScheme);
     ready = true;
+    return () => mq.removeEventListener('change', onScheme);
+  });
+
+  // Re-resolve the effective theme whenever the toggle changes it.
+  $effect(() => {
+    void theme.value;
+    if (ready) effectiveTheme = resolveEffectiveTheme();
+  });
+
+  // Keep the document language in sync with the selected locale.
+  $effect(() => {
+    document.documentElement.lang = LOCALE_META[i18n.locale].htmlLang;
   });
 
   // Keep the URL in sync with every change (replaceState = no history spam).
+  // The default state stays a bare URL — never pin a snapshot of it into `?b`,
+  // so the canonical link keeps tracking the redeployed defaults.
   $effect(() => {
     if (!ready) return;
     const b = encode(picks);
     const url = new URL(location.href);
-    if (b) url.searchParams.set('b', b);
+    if (b && b !== DEFAULT_ENCODED) url.searchParams.set('b', b);
     else url.searchParams.delete('b');
     history.replaceState(history.state, '', url);
     shareUrl = url.href;
@@ -75,15 +152,15 @@
 
   const statusLabel = $derived(
     shareStatus === 'image-copied'
-      ? 'Image copied to clipboard'
+      ? t.imageCopied
       : shareStatus === 'downloaded'
-        ? 'Image downloaded'
+        ? t.imageDownloaded
         : shareStatus === 'copied'
-          ? 'Link copied'
+          ? t.linkCopied
           : shareStatus === 'shared'
-            ? 'Shared'
+            ? t.shared
             : shareStatus === 'error'
-              ? 'Image unavailable — link still works'
+              ? t.imageUnavailable
               : ''
   );
 
@@ -149,9 +226,8 @@
   }
 
   function shareText() {
-    return champ
-      ? `Check my prediction: ${TEAMS[champ].name} will be champion! ${shareUrl}`
-      : `Check the interactive knockout stage here: ${shareUrl}`;
+    const message = champ ? t.shareChampion(teamName(champ)) : t.shareGeneric;
+    return `${message} ${shareUrl}`;
   }
 
   function fileName() {
@@ -289,10 +365,11 @@
     try {
       const blob = await imageBlobPromise();
       const file = new File([blob], fileName(), { type: 'image/png' });
+      const title = `${t.wordmark} 2026`;
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: TITLE, text: shareText(), files: [file] });
+        await navigator.share({ title, text: shareText(), files: [file] });
       } else if (navigator.share) {
-        await navigator.share({ title: TITLE, text: shareText() });
+        await navigator.share({ title, text: shareText() });
       } else {
         await copyLink();
         return;
@@ -360,53 +437,108 @@
 </script>
 
 <svelte:head>
-  <title>{TITLE} — Interactive Bracket</title>
+  <title>{t.wordmark} 2026 — {t.bracketSuffix}</title>
 </svelte:head>
 
 <main>
+  <div class="topbar">
+    <button
+      type="button"
+      class="theme-toggle"
+      onclick={cycleTheme}
+      title="{t.themeLabel}: {themeName[theme.value]}"
+      aria-label="{t.themeLabel}: {themeName[theme.value]}"
+    >
+      {#if theme.value === 'light'}
+        <!-- sun -->
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="4.2" />
+          <path
+            d="M12 2.6v2.5M12 18.9v2.5M4.5 4.5l1.8 1.8M17.7 17.7l1.8 1.8M2.6 12h2.5M18.9 12h2.5M4.5 19.5l1.8-1.8M17.7 6.3l1.8-1.8"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+          />
+        </svg>
+      {:else if theme.value === 'dark'}
+        <!-- moon -->
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a0.6 0.6 0 0 0-0.8-0.8 9.2 9.2 0 1 0 12.1 12.1 0.6 0.6 0 0 0-0.8-0.8z" />
+        </svg>
+      {:else}
+        <!-- system / auto: half-filled circle -->
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" />
+        </svg>
+      {/if}
+    </button>
+
+    <nav class="lang-switch" aria-label={t.langLabel}>
+      {#each LOCALES as loc}
+        <button
+          type="button"
+          class="lang-btn"
+          class:active={i18n.locale === loc}
+          lang={LOCALE_META[loc].htmlLang}
+          aria-pressed={i18n.locale === loc}
+          aria-label={LOCALE_META[loc].label}
+          title={LOCALE_META[loc].label}
+          onclick={() => (i18n.locale = loc)}
+        >
+          <img src={localeFlag(loc)} alt="" aria-hidden="true" />
+          <span>{LOCALE_META[loc].short}</span>
+        </button>
+      {/each}
+    </nav>
+  </div>
+
   <header class="masthead">
-    <p class="eyebrow">Knockout predictor — USA · Canada · Mexico</p>
-    <h1 class="wordmark">World Cup <span class="yr">2026</span></h1>
+    <p class="eyebrow">{t.eyebrow}</p>
+    <h1 class="wordmark">{t.wordmark} <span class="yr">2026</span></h1>
 
     <div class="actions">
-      <button class="btn btn--go" onclick={openShare} bind:this={shareButton}>Share</button>
-      <button class="btn" onclick={loadReal} title="Load the real-world results from config.ts">
-        Real results
-      </button>
-      <button class="btn" onclick={clearAll}>Clear</button>
+      <button class="btn btn--go" onclick={openShare} bind:this={shareButton}>{t.share}</button>
+      <button class="btn" onclick={loadReal} title={t.realResultsTitle}>{t.realResults}</button>
+      <button class="btn" onclick={clearAll}>{t.clear}</button>
     </div>
   </header>
 
-  {#if ready}
-    <div class="board">
-      <BracketSvg {picks} idPrefix="live-" {activePopoverNode} {flashing} />
-      {#each allNodes as n (n.id)}
-        {@const team = teamOf(n.id)}
-        {#if team}
-          <button
-            class="node-button"
-            style={nodeButtonStyle(n)}
-            aria-label="Pick {TEAMS[team].name}"
-            aria-pressed={n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
-            onclick={() => pick(n.id)}
-            onpointerenter={() => (activePopoverNode = n.id)}
-            onpointerleave={() => activePopoverNode === n.id && (activePopoverNode = null)}
-            onfocus={() => (activePopoverNode = n.id)}
-            onblur={() => activePopoverNode === n.id && (activePopoverNode = null)}
-          >
-            <span class="sr-only">Pick {TEAMS[team].name}</span>
-          </button>
-        {/if}
-      {/each}
-    </div>
-  {:else}
-    <div class="board board--loading" aria-busy="true" aria-label="Loading bracket"></div>
-  {/if}
+  <div class="board">
+    <BracketSvg
+      {picks}
+      idPrefix="live-"
+      {activePopoverNode}
+      {flashing}
+      {teamName}
+      ariaLabel={t.bracketAria}
+      theme={effectiveTheme}
+    />
+    {#each allNodes as n (n.id)}
+      {@const team = teamOf(n.id)}
+      {#if team}
+        <button
+          class="node-button"
+          style={nodeButtonStyle(n)}
+          aria-label={t.pick(teamName(team))}
+          aria-pressed={n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
+          onclick={() => pick(n.id)}
+          onpointerenter={() => (activePopoverNode = n.id)}
+          onpointerleave={() => activePopoverNode === n.id && (activePopoverNode = null)}
+          onfocus={() => (activePopoverNode = n.id)}
+          onblur={() => activePopoverNode === n.id && (activePopoverNode = null)}
+        >
+          <span class="sr-only">{t.pick(teamName(team))}</span>
+        </button>
+      {/if}
+    {/each}
+  </div>
 
   <footer class="site-footer">
-    <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub</a>
+    <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">{t.github}</a>
     <span aria-hidden="true">/</span>
-    <a href="{REPOSITORY_URL}/compare" target="_blank" rel="noreferrer">Create a PR</a>
+    <a href="{REPOSITORY_URL}/compare" target="_blank" rel="noreferrer">{t.createPr}</a>
   </footer>
 </main>
 
@@ -417,27 +549,34 @@
   <div class="export-stage" aria-hidden="true">
     <div class="export-card" bind:this={exportCard}>
       <div class="export-card__inner">
-      <header class="export-card__head">
-        <p class="export-card__eyebrow">Knockout predictor — USA · Canada · Mexico</p>
-        <h2 class="export-card__title">World Cup <span>2026</span></h2>
-      </header>
-      <div class="export-card__bracket">
-        <BracketSvg {picks} idPrefix="export-" interactive={false} />
-      </div>
-      <div class="export-card__footer">
-        {#if champ}
-          <div class="export-card__champ">
-            <img class="export-card__champ-flag" src={flagUrl(champ)} alt="" />
-            <div class="export-card__champ-text">
-              <span class="export-card__champ-label">Predicted champion</span>
-              <span class="export-card__champ-name">{TEAMS[champ].name}</span>
+        <header class="export-card__head">
+          <p class="export-card__eyebrow">{t.eyebrow}</p>
+          <h2 class="export-card__title">{t.wordmark} <span>2026</span></h2>
+        </header>
+        <div class="export-card__bracket">
+          <BracketSvg
+            {picks}
+            idPrefix="export-"
+            interactive={false}
+            {teamName}
+            ariaLabel={t.bracketAria}
+            theme={effectiveTheme}
+          />
+        </div>
+        <div class="export-card__footer">
+          {#if champ}
+            <div class="export-card__champ">
+              <img class="export-card__champ-flag" src={flagUrl(champ)} alt="" />
+              <div class="export-card__champ-text">
+                <span class="export-card__champ-label">{t.predictedChampion}</span>
+                <span class="export-card__champ-name">{teamName(champ)}</span>
+              </div>
             </div>
-          </div>
-        {:else}
-          <p class="export-card__neutral">My bracket so far</p>
-        {/if}
-        <p class="export-card__url">{displayUrl}</p>
-      </div>
+          {:else}
+            <p class="export-card__neutral">{t.bracketSoFar}</p>
+          {/if}
+          <p class="export-card__url">{displayUrl}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -455,11 +594,11 @@
       onkeydown={onDialogKeydown}
     >
       <div class="share-modal__head">
-        <h2 id="share-modal-title">Share your bracket</h2>
+        <h2 id="share-modal-title">{t.shareTitle}</h2>
         <button
           class="share-close"
           onclick={closeShare}
-          aria-label="Close share dialog"
+          aria-label={t.closeShare}
           bind:this={closeBtn}
         >
           ×
@@ -468,103 +607,147 @@
 
       <div class="share-preview" aria-live="polite">
         {#if shareStatus === 'error'}
-          <div class="share-preview__msg">
-            Couldn’t build the image. You can still copy the link or share to X.
-          </div>
+          <div class="share-preview__msg">{t.imageBuildError}</div>
         {:else if imageUrl}
-          <img
-            class="share-preview__img"
-            src={imageUrl}
-            alt="Preview of your World Cup 2026 bracket"
-          />
+          <img class="share-preview__img" src={imageUrl} alt={t.previewAlt} />
         {:else}
-          <div class="share-preview__msg share-preview__msg--loading">Rendering your bracket…</div>
+          <div class="share-preview__msg share-preview__msg--loading">{t.rendering}</div>
         {/if}
       </div>
 
       <div class="share-actions">
-        <button class="btn btn--go" onclick={copyImage} disabled={!imageBlob}>Copy image</button>
-        <button class="btn" onclick={downloadPng} disabled={!imageBlob}>Download PNG</button>
-        <button class="btn" onclick={copyLink}>Copy link</button>
-        <button class="btn btn--x" onclick={shareToX} aria-label="Share to X">
+        <button class="btn btn--go" onclick={copyImage} disabled={!imageBlob}>{t.copyImage}</button>
+        <button class="btn" onclick={downloadPng} disabled={!imageBlob}>{t.downloadPng}</button>
+        <button class="btn" onclick={copyLink}>{t.copyLink}</button>
+        <button class="btn btn--x" onclick={shareToX} aria-label={t.shareToX}>
           <img src="/x-logo.svg" alt="" aria-hidden="true" />
         </button>
         {#if canNativeShare}
-          <button class="btn" onclick={nativeShare}>Share…</button>
+          <button class="btn" onclick={nativeShare}>{t.nativeShare}</button>
         {/if}
       </div>
 
-      <p class="share-status" aria-live="polite">{statusLabel || ' '}</p>
+      <p class="share-status" aria-live="polite">{statusLabel || ' '}</p>
     </div>
   </div>
 {/if}
 
 <style>
-  @font-face {
-    font-family: 'Archivo';
-    font-style: normal;
-    font-weight: 600;
-    font-stretch: expanded;
-    font-display: swap;
-    src: url('/fonts/archivo-expanded-600.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Archivo';
-    font-style: normal;
-    font-weight: 800;
-    font-stretch: expanded;
-    font-display: swap;
-    src: url('/fonts/archivo-expanded-800.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Archivo';
-    font-style: normal;
-    font-weight: 900;
-    font-stretch: expanded;
-    font-display: swap;
-    src: url('/fonts/archivo-expanded-900.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Space Mono';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('/fonts/space-mono-400.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Space Mono';
-    font-style: normal;
-    font-weight: 700;
-    font-display: swap;
-    src: url('/fonts/space-mono-700.ttf') format('truetype');
-  }
-
-  :global(body) {
-    margin: 0;
-    /* Palette drawn from the poster + trophy: paper, ink, trophy gold, pitch green. */
-    --paper: #f2efe4;
-    --ink: #1a1916;
-    --muted: #7c7565;
-    --gold: #c8992f;
-    --gold-fill: #e7c24a;
-    --green: #1c7a3d;
-    --line: rgba(26, 25, 22, 0.14);
-    --mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-    --display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-    background: var(--paper);
-    color: var(--ink);
-    font-family:
-      ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  }
+  /* Fonts and the light/dark palette tokens live in the root layout's global
+     stylesheet ($lib/styles/theme.css) so the bracket, the share popup, and the
+     error page share one source of truth. The styles below consume those
+     tokens. */
 
   main {
-    max-width: 920px;
+    /* Wider than the bracket so the longer localized wordmarks ("Copa del
+       Mundo 2026") keep "2026" on one line on larger screens. The bracket
+       itself is pinned back to its original width on `.board` below. */
+    max-width: 1040px;
     margin: 0 auto;
     padding: 1.25rem 1rem 2.5rem;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .lang-switch {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    opacity: 0.72;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      opacity 0.15s ease,
+      transform 0.05s ease;
+  }
+  .theme-toggle svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+  .theme-toggle:hover {
+    opacity: 1;
+    color: var(--ink);
+    background: var(--hover-bg);
+    border-color: var(--hover-border);
+  }
+  .theme-toggle:active {
+    transform: translateY(1px);
+  }
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .lang-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.28rem 0.62rem 0.28rem 0.34rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    opacity: 0.72;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      opacity 0.15s ease,
+      transform 0.05s ease;
+  }
+  .lang-btn img {
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: inset 0 0 0 1px var(--line);
+    filter: saturate(0.45);
+    transition: filter 0.15s ease;
+  }
+  .lang-btn:hover {
+    opacity: 1;
+    background: var(--hover-bg);
+    border-color: var(--hover-border);
+  }
+  .lang-btn:active {
+    transform: translateY(1px);
+  }
+  .lang-btn.active {
+    opacity: 1;
+    color: var(--ink);
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold-fill) 22%, transparent);
+  }
+  .lang-btn.active img {
+    filter: none;
+    box-shadow: 0 0 0 2px var(--gold);
+  }
+  .lang-btn:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
   }
 
   .masthead {
@@ -643,8 +826,8 @@
       transform 0.05s ease;
   }
   .btn:hover {
-    background: rgba(26, 25, 22, 0.05);
-    border-color: rgba(26, 25, 22, 0.28);
+    background: var(--hover-bg);
+    border-color: var(--hover-border);
   }
   .btn:active {
     transform: translateY(1px);
@@ -660,7 +843,8 @@
   .btn--go {
     background: var(--gold-fill);
     border-color: var(--gold);
-    color: var(--ink);
+    /* Always dark text — the gold fill stays light in both themes. */
+    color: #1a1916;
   }
   .btn--go:hover {
     background: var(--gold);
@@ -673,9 +857,11 @@
   .btn--x {
     min-width: 2.7rem;
     padding-inline: 0.8rem;
-    background: var(--ink);
-    border-color: var(--ink);
-    color: var(--paper);
+    /* The X mark is a brand asset — keep it on black in both themes so the
+       white (inverted) logo always reads. */
+    background: #1a1916;
+    border-color: #1a1916;
+    color: #f2efe4;
     font-family: var(--display);
     font-size: 0.82rem;
     font-weight: 900;
@@ -706,9 +892,8 @@
   .board {
     position: relative;
     width: 100%;
-  }
-  .board--loading {
-    aspect-ratio: 880 / 932;
+    max-width: 920px;
+    margin-inline: auto;
   }
 
   .node-button {
@@ -798,7 +983,7 @@
     background: var(--paper);
     border: 1px solid var(--line);
     border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(26, 25, 22, 0.35);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     animation: modal-in 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
   .share-modal:focus {
@@ -824,6 +1009,7 @@
     text-transform: uppercase;
     font-size: 1rem;
     letter-spacing: 0.02em;
+    color: var(--ink);
   }
   .share-close {
     width: 2rem;
@@ -837,7 +1023,7 @@
     cursor: pointer;
   }
   .share-close:hover {
-    background: rgba(26, 25, 22, 0.06);
+    background: var(--hover-bg);
     color: var(--ink);
   }
   .share-close:focus-visible {
@@ -852,7 +1038,7 @@
     aspect-ratio: 1;
     width: 100%;
     overflow: hidden;
-    background: #e9e5d8;
+    background: var(--empty-fill);
     border: 1px solid var(--line);
     border-radius: 12px;
   }
@@ -1002,6 +1188,7 @@
     text-transform: uppercase;
     font-size: 42px;
     line-height: 1;
+    color: var(--ink);
   }
   .export-card__neutral {
     margin: 0;

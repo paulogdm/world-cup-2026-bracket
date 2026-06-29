@@ -2,22 +2,27 @@
   "name": "world-cup-2026-bracket",
   "version": "0.1.0",
   "private": true,
+  "license": "WTFPL",
   "type": "module",
+  "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@sveltejs/adapter-vercel": "^5.4.0",
     "@sveltejs/kit": "^2.8.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@types/canvas-confetti": "^1.6.4",
+    "@types/node": "^26.0.1",
     "svelte": "^5.19.0",
     "svelte-check": "^4.1.0",
     "typescript": "^5.7.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",

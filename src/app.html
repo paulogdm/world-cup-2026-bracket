@@ -2,7 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- No-flash theme: apply a forced light/dark choice before first paint.
+         `system` (or no stored value) falls through to prefers-color-scheme. -->
+    <script>
+      try {
+        var t = localStorage.getItem('wc2026-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    </script>
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+    <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+    <link
+      rel="preload"
+      href="%sveltekit.assets%/fonts/archivo-expanded-900.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="%sveltekit.assets%/fonts/space-mono-700.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Interactive World Cup 2026 bracket — click flags to advance teams. Share your bracket via the URL." />
     <link rel="canonical" href="https://wc2026.paulogdm.com/" />

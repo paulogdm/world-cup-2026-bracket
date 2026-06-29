@@ -24,6 +24,17 @@
     interactive?: boolean;
     activePopoverNode?: string | null;
     flashing?: Set<string>;
+    /** Localised country name for a team. Defaults to the English name in teams.ts. */
+    teamName?: (id: TeamId) => string;
+    /** Accessible label for the bracket <svg>. */
+    ariaLabel?: string;
+    /**
+     * Effective colour scheme. Drives the baked-in presentation attributes the
+     * export capture relies on (html-to-image strips the scoped stylesheet, so
+     * only attributes survive). On-screen the CSS tokens still win, so this only
+     * matters for the rasterised image.
+     */
+    theme?: 'light' | 'dark';
   }
 
   let {
@@ -31,7 +42,10 @@
     idPrefix = '',
     interactive = true,
     activePopoverNode = null,
-    flashing = new Set<string>()
+    flashing = new Set<string>(),
+    teamName = (id: TeamId) => TEAMS[id].name,
+    ariaLabel = `${TITLE} bracket`,
+    theme = 'light'
   }: Props = $props();
 
   const TROPHY_IMAGE_URL = '/world-cup-trophy.svg';
@@ -75,14 +89,17 @@
     return resolveTeam(id, picks);
   }
 
-  // Stroke colours mirror the scoped CSS. They're applied as presentation
+  // Stroke/fill colours mirror the scoped CSS. They're applied as presentation
   // attributes too because html-to-image copies the SVG as raw markup without
   // the external stylesheet — only attributes survive the capture. CSS still
-  // wins on-screen, so the live look (widths, glows) is unchanged.
-  const GOLD = '#c8992f';
-  const CHAMP_SEAT = '#d9b34a';
-  const RING_BASE = '#2a2925';
-  const RING_EMPTY = '#b8b3a3';
+  // wins on-screen, so the live look (widths, glows) is unchanged. Each palette
+  // mirrors the light/dark values of the matching token in theme.css, so the
+  // rasterised image follows the user's theme.
+  const PALETTES = {
+    light: { stroke: '#2a2925', emptyStroke: '#b8b3a3', emptyFill: '#e9e5d8', gold: '#c8992f', champSeat: '#d9b34a' },
+    dark: { stroke: '#5f5a4e', emptyStroke: '#585346', emptyFill: '#232017', gold: '#d8a93c', champSeat: '#e6c25c' }
+  } as const;
+  const pal = $derived(PALETTES[theme]);
 
   function ringStroke(
     team: TeamId | undefined,
@@ -90,11 +107,11 @@
     isPicked: boolean,
     isChampionPick: boolean
   ): string {
-    if (isChampSeat) return CHAMP_SEAT;
-    if (isChampionPick) return GOLD;
+    if (isChampSeat) return pal.champSeat;
+    if (isChampionPick) return pal.gold;
     if (isPicked && team) return flagAccentColor(team);
-    if (team) return RING_BASE;
-    return RING_EMPTY;
+    if (team) return pal.stroke;
+    return pal.emptyStroke;
   }
 
   function ringWidth(isChampSeat: boolean, isPicked: boolean, isChampionPick: boolean): number {
@@ -110,14 +127,14 @@
   class:bracket-svg--static={!interactive}
   viewBox="0 {BRACKET_TOP_CROP} {VW} {BRACKET_VIEW_HEIGHT}"
   role="group"
-  aria-label="{TITLE} bracket"
+  aria-label={ariaLabel}
 >
   {#each connectors as c}
     <path
       d={c.path}
       class="conn"
       fill="none"
-      stroke={RING_BASE}
+      stroke={pal.stroke}
       stroke-width="1.7"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -133,7 +150,7 @@
         class:conn--champion={isChamp}
         style:--pick-color={connectorColor(c)}
         fill="none"
-        stroke={isChamp ? GOLD : connectorColor(c)}
+        stroke={isChamp ? pal.gold : connectorColor(c)}
         stroke-width={isChamp ? 4.5 : 3.5}
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -170,7 +187,7 @@
         preserveAspectRatio="xMidYMid slice"
         clip-path="url(#{idPrefix}champion-flag-clip)"
       />
-      <circle r="46" class="champion-ring" fill="none" stroke={CHAMP_SEAT} stroke-width="5" />
+      <circle r="46" class="champion-ring" fill="none" stroke={pal.champSeat} stroke-width="5" />
       <g transform="translate(0,-70)">{@render trophy(0.28)}</g>
     </g>
   {:else}
@@ -217,25 +234,26 @@
         class="ring"
         class:empty={!team}
         class:filled={team}
-        fill={team ? 'none' : '#e9e5d8'}
+        fill={team ? 'none' : pal.emptyFill}
         stroke={ringStroke(team, isChampSeat, isPicked, isChampionPick)}
         stroke-width={ringWidth(isChampSeat, isPicked, isChampionPick)}
       />
       {#if team && interactive}
+        {@const name = teamName(team)}
         <g
           class="country-popover"
           class:country-popover--visible={activePopoverNode === n.id}
           transform="translate(0,{-n.r - 18})"
         >
           <rect
-            x={-TEAMS[team].name.length * 3.8 - 10}
+            x={-name.length * 3.8 - 10}
             y="-16"
-            width={TEAMS[team].name.length * 7.6 + 20}
+            width={name.length * 7.6 + 20}
             height="24"
             rx="12"
           />
           <text text-anchor="middle" dominant-baseline="middle" y="-4">
-            {TEAMS[team].name}
+            {name}
           </text>
         </g>
       {/if}
@@ -259,7 +277,7 @@
   }
 
   .conn {
-    stroke: #2a2925;
+    stroke: var(--stroke);
     stroke-width: 1.7;
     fill: none;
     stroke-linecap: round;
@@ -284,7 +302,7 @@
   }
   .champion-ring {
     fill: none;
-    stroke: #d9b34a;
+    stroke: var(--gold-bright);
     stroke-width: 5;
     filter: drop-shadow(0 0 10px rgba(217, 179, 74, 0.85));
     animation: pop 0.35s ease-out;
@@ -307,23 +325,23 @@
     cursor: pointer;
   }
   .ring {
-    fill: #f2efe4;
-    stroke: #2a2925;
+    fill: var(--ring-fill);
+    stroke: var(--stroke);
     stroke-width: 1.5;
     transition:
       stroke 0.2s,
       r 0.2s;
   }
   .ring.empty {
-    fill: #e9e5d8;
-    stroke: #b8b3a3;
+    fill: var(--empty-fill);
+    stroke: var(--empty-stroke);
     stroke-dasharray: 3 3;
   }
   .ring.filled {
     fill: none;
   }
   .node.active .ring {
-    stroke: #d9b34a;
+    stroke: var(--gold-bright);
     stroke-width: 3;
   }
 
@@ -340,7 +358,7 @@
   }
 
   .champseat .ring {
-    stroke: #d9b34a;
+    stroke: var(--gold-bright);
     stroke-width: 4;
     filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.8));
   }
@@ -373,11 +391,11 @@
   }
   @keyframes flash {
     0% {
-      stroke: #d96a4a;
+      stroke: var(--flash);
       stroke-width: 5;
     }
     100% {
-      stroke: #b8b3a3;
+      stroke: var(--empty-stroke);
       stroke-width: 1.5;
     }
   }
