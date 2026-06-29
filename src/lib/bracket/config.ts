@@ -24,13 +24,13 @@ export const defaultResults: Record<string, TeamId> = {
   // ── Round of 32 ──────────────────────────────────────────────────────────
   // 'R32-01': 'de',     // Paraguay        vs Germany
   // 'R32-02': 'fr',     // France          vs Sweden
-  'R32-03': 'ca', //     South Africa    vs Canada  ✅ Canada won
+  'R32-03': 'ca', //     South Africa       vs Canada  ✅ Canada won
   // 'R32-04': 'nl',     // Netherlands     vs Morocco
   // 'R32-05': 'pt',     // Portugal        vs Croatia
   // 'R32-06': 'es',     // Spain           vs Austria
   // 'R32-07': 'us',     // United States   vs Bosnia & Herzegovina
   // 'R32-08': 'be',     // Senegal         vs Belgium
-  // 'R32-09': 'br',     // Brazil          vs Japan
+  'R32-09': 'br', //     Brazil             vs Japan  ✅ Brazil won
   // 'R32-10': 'ci',     // Côte d'Ivoire   vs Norway
   // 'R32-11': 'mx',     // Mexico          vs Ecuador
   // 'R32-12': 'gb-eng', // England         vs DR Congo
