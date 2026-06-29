@@ -466,58 +466,9 @@
 </main>
 
 <style>
-  @font-face {
-    font-family: 'Archivo';
-    font-style: normal;
-    font-weight: 900;
-    font-stretch: expanded;
-    font-display: swap;
-    src: url('/fonts/archivo-expanded-900.woff2') format('woff2');
-  }
-
-  @font-face {
-    font-family: 'Space Mono';
-    font-style: normal;
-    font-weight: 700;
-    font-display: swap;
-    src: url('/fonts/space-mono-700.woff2') format('woff2');
-  }
-
-  /* `color-scheme` lets `light-dark()` resolve each token to its light/dark
-     value, and styles native form controls / scrollbars to match. The theme
-     toggle (see theme store) overrides this on <html> for a forced choice;
-     otherwise the OS `prefers-color-scheme` decides. */
-  :global(html) {
-    color-scheme: light dark;
-  }
-
-  :global(body) {
-    margin: 0;
-    /* Palette drawn from the poster + trophy: paper, ink, trophy gold, pitch
-       green. Each token carries a light and a dark value via light-dark(). */
-    --paper: light-dark(#f2efe4, #16140f);
-    --ink: light-dark(#1a1916, #ece7d6);
-    --muted: light-dark(#7c7565, #989083);
-    --gold: light-dark(#c8992f, #d8a93c);
-    --gold-fill: light-dark(#e7c24a, #e7c24a);
-    --gold-bright: light-dark(#d9b34a, #e6c25c);
-    --green: light-dark(#1c7a3d, #36a85c);
-    --line: light-dark(rgba(26, 25, 22, 0.14), rgba(236, 231, 214, 0.16));
-    /* Subtle hover surfaces and the bracket's structural strokes/fills. */
-    --hover-bg: light-dark(rgba(26, 25, 22, 0.05), rgba(236, 231, 214, 0.08));
-    --hover-border: light-dark(rgba(26, 25, 22, 0.28), rgba(236, 231, 214, 0.34));
-    --stroke: light-dark(#2a2925, #5f5a4e);
-    --ring-fill: light-dark(#f2efe4, #211e17);
-    --empty-fill: light-dark(#e9e5d8, #232017);
-    --empty-stroke: light-dark(#b8b3a3, #585346);
-    --flash: light-dark(#d96a4a, #e07a52);
-    --mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-    --display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-    background: var(--paper);
-    color: var(--ink);
-    font-family:
-      ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  }
+  /* Fonts and the light/dark palette tokens now live in the root layout's
+     global stylesheet ($lib/styles/theme.css) so the bracket and the error
+     page share one source of truth. The styles below consume those tokens. */
 
   main {
     /* Wider than the bracket so the longer localized wordmarks ("Copa del

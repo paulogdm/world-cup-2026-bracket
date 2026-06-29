@@ -29,6 +29,18 @@ export interface Strings {
   clear: string;
   github: string;
   createPr: string;
+  /** Error-page kicker, combined with the HTTP status, e.g. "Error 404". */
+  errorKicker: string;
+  /** Headline shown for a 404 (page not found). */
+  notFoundTitle: string;
+  /** Body copy shown for a 404. */
+  notFoundBody: string;
+  /** Headline shown for any other (non-404) error. */
+  errorTitle: string;
+  /** Body copy shown for any other (non-404) error. */
+  errorBody: string;
+  /** Label for the link that returns to the bracket home. */
+  backHome: string;
   /** Accessible label for a flag button, e.g. "Pick Brazil". */
   pick: (name: string) => string;
   /** Share message when a champion has been crowned. */
@@ -57,6 +69,12 @@ export const STRINGS: Record<Locale, Strings> = {
     clear: 'Clear',
     github: 'GitHub',
     createPr: 'Create a PR',
+    errorKicker: 'Error',
+    notFoundTitle: 'Off the pitch',
+    notFoundBody: "This page didn’t make it out of the group stage. Let’s get you back to the bracket.",
+    errorTitle: 'Something went wrong',
+    errorBody: 'An unexpected error stopped play. Try heading back to the bracket.',
+    backHome: 'Back to the bracket',
     pick: (name) => `Pick ${name}`,
     shareChampion: (name) => `Check my prediction: ${name} will be champion!`,
     shareGeneric: 'Check the interactive knockout stage here:'
@@ -80,6 +98,12 @@ export const STRINGS: Record<Locale, Strings> = {
     clear: 'Limpar',
     github: 'GitHub',
     createPr: 'Criar um PR',
+    errorKicker: 'Erro',
+    notFoundTitle: 'Fora de campo',
+    notFoundBody: 'Esta página não passou da fase de grupos. Vamos te levar de volta ao chaveamento.',
+    errorTitle: 'Algo deu errado',
+    errorBody: 'Um erro inesperado interrompeu o jogo. Tente voltar ao chaveamento.',
+    backHome: 'Voltar ao chaveamento',
     pick: (name) => `Escolher ${name}`,
     shareChampion: (name) => `Veja meu palpite: ${name} vai ser campeão!`,
     shareGeneric: 'Veja o mata-mata interativo aqui:'
@@ -103,6 +127,12 @@ export const STRINGS: Record<Locale, Strings> = {
     clear: 'Limpiar',
     github: 'GitHub',
     createPr: 'Crear un PR',
+    errorKicker: 'Error',
+    notFoundTitle: 'Fuera de juego',
+    notFoundBody: 'Esta página no pasó de la fase de grupos. Te llevamos de vuelta al cuadro.',
+    errorTitle: 'Algo salió mal',
+    errorBody: 'Un error inesperado detuvo el juego. Intenta volver al cuadro.',
+    backHome: 'Volver al cuadro',
     pick: (name) => `Elegir ${name}`,
     shareChampion: (name) => `Mira mi pronóstico: ¡${name} será campeón!`,
     shareGeneric: 'Mira la fase eliminatoria interactiva aquí:'
