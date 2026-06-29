@@ -381,36 +381,10 @@
   @font-face {
     font-family: 'Archivo';
     font-style: normal;
-    font-weight: 600;
-    font-stretch: expanded;
-    font-display: swap;
-    src: url('/fonts/archivo-expanded-600.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Archivo';
-    font-style: normal;
-    font-weight: 800;
-    font-stretch: expanded;
-    font-display: swap;
-    src: url('/fonts/archivo-expanded-800.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Archivo';
-    font-style: normal;
     font-weight: 900;
     font-stretch: expanded;
     font-display: swap;
-    src: url('/fonts/archivo-expanded-900.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Space Mono';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('/fonts/space-mono-400.ttf') format('truetype');
+    src: url('/fonts/archivo-expanded-900.woff2') format('woff2');
   }
 
   @font-face {
@@ -418,7 +392,7 @@
     font-style: normal;
     font-weight: 700;
     font-display: swap;
-    src: url('/fonts/space-mono-700.ttf') format('truetype');
+    src: url('/fonts/space-mono-700.woff2') format('woff2');
   }
 
   :global(body) {
