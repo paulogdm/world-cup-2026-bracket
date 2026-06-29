@@ -226,7 +226,8 @@
     </div>
   </header>
 
-  <div class="board">
+  {#if ready}
+    <div class="board">
     <svg viewBox="0 {BRACKET_TOP_CROP} {VW} {BRACKET_VIEW_HEIGHT}" role="group" aria-label="{TITLE} bracket">
       {#each connectors as c}
         <path d={c.path} class="conn" />
@@ -350,7 +351,10 @@
         </button>
       {/if}
     {/each}
-  </div>
+    </div>
+  {:else}
+    <div class="board board--loading" aria-busy="true" aria-label="Loading bracket"></div>
+  {/if}
 
   <footer class="site-footer">
     <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub</a>
@@ -553,6 +557,9 @@
   .board {
     position: relative;
     width: 100%;
+  }
+  .board--loading {
+    aspect-ratio: 880 / 932;
   }
 
   .node-button {
