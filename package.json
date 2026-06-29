@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
-    "flag-icons": "^7.2.3"
+    "flag-icons": "^7.2.3",
+    "html-to-image": "^1.11.13"
   }
 }
