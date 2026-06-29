@@ -6,6 +6,12 @@ import type { Locale } from './locales';
 export interface Strings {
   /** Accessible label for the language switcher. */
   langLabel: string;
+  /** Accessible label / tooltip prefix for the theme toggle. */
+  themeLabel: string;
+  /** Theme names, used in the toggle's accessible label. */
+  themeSystem: string;
+  themeLight: string;
+  themeDark: string;
   /** Small kicker above the wordmark. */
   eyebrow: string;
   /** First line of the wordmark; the styled "2026" is appended in markup. */
@@ -34,6 +40,10 @@ export interface Strings {
 export const STRINGS: Record<Locale, Strings> = {
   en: {
     langLabel: 'Language',
+    themeLabel: 'Theme',
+    themeSystem: 'System',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     eyebrow: 'Knockout predictor — USA · Canada · Mexico',
     wordmark: 'World Cup',
     bracketSuffix: 'Interactive Bracket',
@@ -53,6 +63,10 @@ export const STRINGS: Record<Locale, Strings> = {
   },
   'pt-BR': {
     langLabel: 'Idioma',
+    themeLabel: 'Tema',
+    themeSystem: 'Sistema',
+    themeLight: 'Claro',
+    themeDark: 'Escuro',
     eyebrow: 'Palpites do mata-mata — EUA · Canadá · México',
     wordmark: 'Copa do Mundo',
     bracketSuffix: 'Chaveamento interativo',
@@ -72,6 +86,10 @@ export const STRINGS: Record<Locale, Strings> = {
   },
   es: {
     langLabel: 'Idioma',
+    themeLabel: 'Tema',
+    themeSystem: 'Sistema',
+    themeLight: 'Claro',
+    themeDark: 'Oscuro',
     eyebrow: 'Pronóstico de eliminatorias — EE. UU. · Canadá · México',
     wordmark: 'Copa del Mundo',
     bracketSuffix: 'Cuadro interactivo',

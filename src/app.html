@@ -2,6 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- No-flash theme: apply a forced light/dark choice before first paint.
+         `system` (or no stored value) falls through to prefers-color-scheme. -->
+    <script>
+      try {
+        var t = localStorage.getItem('wc2026-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    </script>
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
     <link
       rel="preload"

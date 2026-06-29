@@ -29,10 +29,24 @@
   import { STRINGS } from '$lib/i18n/strings';
   import { localizedTeamName } from '$lib/i18n/team-names';
   import { i18n, initLocale } from '$lib/i18n/store.svelte';
+  import { THEMES, type Theme } from '$lib/theme/themes';
+  import { theme, initTheme } from '$lib/theme/store.svelte';
 
   // Current UI strings, reactive to the selected locale.
   const t = $derived(STRINGS[i18n.locale]);
   const teamName = (id: TeamId) => localizedTeamName(id, i18n.locale);
+
+  // Localized name for each theme, used in the toggle's accessible label.
+  const themeName = $derived<Record<Theme, string>>({
+    system: t.themeSystem,
+    light: t.themeLight,
+    dark: t.themeDark
+  });
+  // The toggle cycles through the modes in declared order (system → light → dark).
+  function cycleTheme() {
+    const next = (THEMES.indexOf(theme.value) + 1) % THEMES.length;
+    theme.value = THEMES[next];
+  }
 
   // The real-world default state. Computed once so it can seed the prerendered
   // markup *and* be compared against on every URL sync (see below).
@@ -52,6 +66,7 @@
   // override the default with a shared bracket only when the URL carries one.
   onMount(() => {
     initLocale();
+    initTheme();
     const b = new URLSearchParams(location.search).get('b');
     if (b) picks = decode(b);
     ready = true;
@@ -251,8 +266,42 @@
 </svelte:head>
 
 <main>
-  <nav class="lang-switch" aria-label={t.langLabel}>
-    {#each LOCALES as loc}
+  <div class="topbar">
+    <button
+      type="button"
+      class="theme-toggle"
+      onclick={cycleTheme}
+      title="{t.themeLabel}: {themeName[theme.value]}"
+      aria-label="{t.themeLabel}: {themeName[theme.value]}"
+    >
+      {#if theme.value === 'light'}
+        <!-- sun -->
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="4.2" />
+          <path
+            d="M12 2.6v2.5M12 18.9v2.5M4.5 4.5l1.8 1.8M17.7 17.7l1.8 1.8M2.6 12h2.5M18.9 12h2.5M4.5 19.5l1.8-1.8M17.7 6.3l1.8-1.8"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+          />
+        </svg>
+      {:else if theme.value === 'dark'}
+        <!-- moon -->
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a0.6 0.6 0 0 0-0.8-0.8 9.2 9.2 0 1 0 12.1 12.1 0.6 0.6 0 0 0-0.8-0.8z" />
+        </svg>
+      {:else}
+        <!-- system / auto: half-filled circle -->
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" />
+        </svg>
+      {/if}
+    </button>
+
+    <nav class="lang-switch" aria-label={t.langLabel}>
+      {#each LOCALES as loc}
       <button
         type="button"
         class="lang-btn"
@@ -266,8 +315,9 @@
         <img src={localeFlag(loc)} alt="" aria-hidden="true" />
         <span>{LOCALE_META[loc].short}</span>
       </button>
-    {/each}
-  </nav>
+      {/each}
+    </nav>
+  </div>
 
   <header class="masthead">
     <p class="eyebrow">{t.eyebrow}</p>
@@ -433,16 +483,34 @@
     src: url('/fonts/space-mono-700.woff2') format('woff2');
   }
 
+  /* `color-scheme` lets `light-dark()` resolve each token to its light/dark
+     value, and styles native form controls / scrollbars to match. The theme
+     toggle (see theme store) overrides this on <html> for a forced choice;
+     otherwise the OS `prefers-color-scheme` decides. */
+  :global(html) {
+    color-scheme: light dark;
+  }
+
   :global(body) {
     margin: 0;
-    /* Palette drawn from the poster + trophy: paper, ink, trophy gold, pitch green. */
-    --paper: #f2efe4;
-    --ink: #1a1916;
-    --muted: #7c7565;
-    --gold: #c8992f;
-    --gold-fill: #e7c24a;
-    --green: #1c7a3d;
-    --line: rgba(26, 25, 22, 0.14);
+    /* Palette drawn from the poster + trophy: paper, ink, trophy gold, pitch
+       green. Each token carries a light and a dark value via light-dark(). */
+    --paper: light-dark(#f2efe4, #16140f);
+    --ink: light-dark(#1a1916, #ece7d6);
+    --muted: light-dark(#7c7565, #989083);
+    --gold: light-dark(#c8992f, #d8a93c);
+    --gold-fill: light-dark(#e7c24a, #e7c24a);
+    --gold-bright: light-dark(#d9b34a, #e6c25c);
+    --green: light-dark(#1c7a3d, #36a85c);
+    --line: light-dark(rgba(26, 25, 22, 0.14), rgba(236, 231, 214, 0.16));
+    /* Subtle hover surfaces and the bracket's structural strokes/fills. */
+    --hover-bg: light-dark(rgba(26, 25, 22, 0.05), rgba(236, 231, 214, 0.08));
+    --hover-border: light-dark(rgba(26, 25, 22, 0.28), rgba(236, 231, 214, 0.34));
+    --stroke: light-dark(#2a2925, #5f5a4e);
+    --ring-fill: light-dark(#f2efe4, #211e17);
+    --empty-fill: light-dark(#e9e5d8, #232017);
+    --empty-stroke: light-dark(#b8b3a3, #585346);
+    --flash: light-dark(#d96a4a, #e07a52);
     --mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
     --display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
     background: var(--paper);
@@ -460,11 +528,54 @@
     padding: 1.25rem 1rem 2.5rem;
   }
 
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
   .lang-switch {
     display: flex;
-    justify-content: flex-end;
     gap: 0.4rem;
-    margin-bottom: 0.4rem;
+  }
+
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    opacity: 0.72;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      opacity 0.15s ease,
+      transform 0.05s ease;
+  }
+  .theme-toggle svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+  .theme-toggle:hover {
+    opacity: 1;
+    color: var(--ink);
+    background: var(--hover-bg);
+    border-color: var(--hover-border);
+  }
+  .theme-toggle:active {
+    transform: translateY(1px);
+  }
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
   }
   .lang-btn {
     display: inline-flex;
@@ -499,8 +610,8 @@
   }
   .lang-btn:hover {
     opacity: 1;
-    background: rgba(26, 25, 22, 0.05);
-    border-color: rgba(26, 25, 22, 0.28);
+    background: var(--hover-bg);
+    border-color: var(--hover-border);
   }
   .lang-btn:active {
     transform: translateY(1px);
@@ -596,8 +707,8 @@
       transform 0.05s ease;
   }
   .btn:hover {
-    background: rgba(26, 25, 22, 0.05);
-    border-color: rgba(26, 25, 22, 0.28);
+    background: var(--hover-bg);
+    border-color: var(--hover-border);
   }
   .btn:active {
     transform: translateY(1px);
@@ -605,7 +716,8 @@
   .btn--go {
     background: var(--gold-fill);
     border-color: var(--gold);
-    color: var(--ink);
+    /* Always dark text — the gold fill stays light in both themes. */
+    color: #1a1916;
   }
   .btn--go:hover {
     background: var(--gold);
@@ -614,9 +726,11 @@
   .btn--x {
     min-width: 2.7rem;
     padding-inline: 0.8rem;
-    background: var(--ink);
-    border-color: var(--ink);
-    color: var(--paper);
+    /* The X mark is a brand asset — keep it on black in both themes so the
+       white (inverted) logo always reads. */
+    background: #1a1916;
+    border-color: #1a1916;
+    color: #f2efe4;
     font-family: var(--display);
     font-size: 0.82rem;
     font-weight: 900;
@@ -717,7 +831,7 @@
   }
 
   .conn {
-    stroke: #2a2925;
+    stroke: var(--stroke);
     stroke-width: 1.7;
     fill: none;
     stroke-linecap: round;
@@ -742,7 +856,7 @@
   }
   .champion-ring {
     fill: none;
-    stroke: #d9b34a;
+    stroke: var(--gold-bright);
     stroke-width: 5;
     filter: drop-shadow(0 0 10px rgba(217, 179, 74, 0.85));
     animation: pop 0.35s ease-out;
@@ -765,23 +879,23 @@
     cursor: pointer;
   }
   .ring {
-    fill: #f2efe4;
-    stroke: #2a2925;
+    fill: var(--ring-fill);
+    stroke: var(--stroke);
     stroke-width: 1.5;
     transition:
       stroke 0.2s,
       r 0.2s;
   }
   .ring.empty {
-    fill: #e9e5d8;
-    stroke: #b8b3a3;
+    fill: var(--empty-fill);
+    stroke: var(--empty-stroke);
     stroke-dasharray: 3 3;
   }
   .ring.filled {
     fill: none;
   }
   .node.active .ring {
-    stroke: #d9b34a;
+    stroke: var(--gold-bright);
     stroke-width: 3;
   }
 
@@ -798,7 +912,7 @@
   }
 
   .champseat .ring {
-    stroke: #d9b34a;
+    stroke: var(--gold-bright);
     stroke-width: 4;
     filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.8));
   }
@@ -831,11 +945,11 @@
   }
   @keyframes flash {
     0% {
-      stroke: #d96a4a;
+      stroke: var(--flash);
       stroke-width: 5;
     }
     100% {
-      stroke: #b8b3a3;
+      stroke: var(--empty-stroke);
       stroke-width: 1.5;
     }
   }
