@@ -1,30 +1,20 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  import BracketSvg from '$lib/bracket/BracketSvg.svelte';
+  import { allNodes, matchById, VW, VH, type BracketNode } from '$lib/bracket/structure';
   import {
-    allNodes,
-    connectors,
-    getMatchById,
-    matchById,
-    CX,
-    CY,
-    VW,
-    VH,
-    type BracketNode,
-    type Connector
-  } from '$lib/bracket/structure';
-  import {
-    resolveTeam,
     champion,
-    championNode,
     encode,
     decode,
     applyPick,
     picksFromResults,
+    resolveTeam,
     type Picks
   } from '$lib/bracket/state';
   import { TEAMS, type TeamId } from '$lib/bracket/teams';
   import { defaultResults } from '$lib/bracket/config';
+  import { flagUrl } from '$lib/bracket/flags';
   import { LOCALES, LOCALE_META, type Locale } from '$lib/i18n/locales';
   import { STRINGS } from '$lib/i18n/strings';
   import { localizedTeamName } from '$lib/i18n/team-names';
@@ -59,8 +49,53 @@
   let picks = $state<Picks>(DEFAULT_PICKS);
   let flashing = $state<Set<string>>(new Set());
   let ready = $state(false);
-  let shareStatus = $state<'idle' | 'shared' | 'copied'>('idle');
   let activePopoverNode = $state<string | null>(null);
+  // Tracks the OS preference so a `system` theme resolves to a concrete
+  // light/dark for the rasterised export (which can't read `light-dark()`).
+  let systemDark = $state(false);
+  const resolvedTheme = $derived<'light' | 'dark'>(
+    theme.value === 'system' ? (systemDark ? 'dark' : 'light') : theme.value
+  );
+
+  type ShareStatus =
+    | 'idle'
+    | 'generating'
+    | 'ready'
+    | 'image-copied'
+    | 'downloaded'
+    | 'copied'
+    | 'shared'
+    | 'error';
+
+  // Share popup state.
+  let shareOpen = $state(false);
+  let shareStatus = $state<ShareStatus>('idle');
+  let imageUrl = $state<string | null>(null);
+  let imageBlob = $state<Blob | null>(null);
+  let shareUrl = $state('');
+  let canNativeShare = $state(false);
+
+  let pendingBlob: Promise<Blob> | null = null;
+  let statusTimer: ReturnType<typeof setTimeout> | undefined;
+  let exportCard = $state<HTMLDivElement>();
+  let dialogEl = $state<HTMLDivElement>();
+  let closeBtn = $state<HTMLButtonElement>();
+  let shareButton = $state<HTMLButtonElement>();
+
+  const REPOSITORY_URL = 'https://github.com/paulogdm/world-cup-2026-bracket';
+  const BRACKET_TOP_CROP = 48;
+  const BRACKET_VIEW_HEIGHT = VH - BRACKET_TOP_CROP;
+
+  // Flags for the language switcher (kept separate from the team flags so the
+  // switcher doesn't depend on those codes happening to be teams).
+  const localeFlagModules = import.meta.glob<string>(
+    '/node_modules/flag-icons/flags/1x1/{us,br,es}.svg',
+    { eager: true, import: 'default', query: '?url' }
+  );
+  const localeFlagUrls = Object.fromEntries(
+    Object.entries(localeFlagModules).map(([path, url]) => [path.match(/\/([^/]+)\.svg$/)![1], url])
+  ) as Record<string, string>;
+  const localeFlag = (loc: Locale) => localeFlagUrls[LOCALE_META[loc].flag];
 
   // Resolve the UI language (stored choice → browser preference → English) and
   // override the default with a shared bracket only when the URL carries one.
@@ -69,7 +104,15 @@
     initTheme();
     const b = new URLSearchParams(location.search).get('b');
     if (b) picks = decode(b);
+    shareUrl = location.href;
+    canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
     ready = true;
+
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    systemDark = mq.matches;
+    const onSchemeChange = (e: MediaQueryListEvent) => (systemDark = e.matches);
+    mq.addEventListener('change', onSchemeChange);
+    return () => mq.removeEventListener('change', onSchemeChange);
   });
 
   // Keep the document language in sync with the selected locale.
@@ -87,85 +130,25 @@
     if (b && b !== DEFAULT_ENCODED) url.searchParams.set('b', b);
     else url.searchParams.delete('b');
     history.replaceState(history.state, '', url);
+    shareUrl = url.href;
   });
 
   const champ = $derived(champion(picks));
-  const champNode = $derived(championNode(picks));
-  const TROPHY_IMAGE_URL = '/world-cup-trophy.svg';
-  const REPOSITORY_URL = 'https://github.com/paulogdm/world-cup-2026-bracket';
-  const BRACKET_TOP_CROP = 48;
-  const BRACKET_VIEW_HEIGHT = VH - BRACKET_TOP_CROP;
-  const flagModules = import.meta.glob<string>(
-    '/node_modules/flag-icons/flags/1x1/{ar,at,au,ba,be,br,ca,cd,ch,ci,co,cv,de,dz,ec,eg,es,fr,gb-eng,gh,hr,jp,ma,mx,nl,no,pt,py,se,sn,us,za}.svg',
-    {
-      eager: true,
-      import: 'default',
-      query: '?url'
-    }
+  const displayUrl = $derived(shareUrl.replace(/^https?:\/\//, ''));
+
+  const statusLabel = $derived(
+    shareStatus === 'image-copied'
+      ? t.imageCopied
+      : shareStatus === 'downloaded'
+        ? t.imageDownloaded
+        : shareStatus === 'copied'
+          ? t.linkCopied
+          : shareStatus === 'shared'
+            ? t.shared
+            : shareStatus === 'error'
+              ? t.imageUnavailable
+              : ''
   );
-  const flagUrls = Object.fromEntries(
-    Object.entries(flagModules).map(([path, url]) => [path.match(/\/([^/]+)\.svg$/)![1], url])
-  ) as Record<TeamId, string>;
-
-  // Flags for the language switcher (kept separate from the team flags above so
-  // the switcher doesn't depend on those codes happening to be teams).
-  const localeFlagModules = import.meta.glob<string>(
-    '/node_modules/flag-icons/flags/1x1/{us,br,es}.svg',
-    { eager: true, import: 'default', query: '?url' }
-  );
-  const localeFlagUrls = Object.fromEntries(
-    Object.entries(localeFlagModules).map(([path, url]) => [path.match(/\/([^/]+)\.svg$/)![1], url])
-  ) as Record<string, string>;
-  const localeFlag = (loc: Locale) => localeFlagUrls[LOCALE_META[loc].flag];
-
-  // The glob above lists the flag codes literally (a static-string requirement),
-  // so it can silently drift from teams.ts. Surface any gap loudly in dev; the
-  // `flags.test.ts` suite enforces the same invariant in CI.
-  if (import.meta.env.DEV) {
-    const missing = (Object.keys(TEAMS) as TeamId[]).filter((id) => !flagUrls[id]);
-    if (missing.length) console.error('[bracket] no flag asset for:', missing.join(', '));
-  }
-
-  function flagUrl(team: TeamId): string {
-    return flagUrls[team];
-  }
-
-  function flagAccentColor(team: TeamId) {
-    return (
-      TEAMS[team].flagColors.find((color) => !['#ffffff', '#000000'].includes(color.toLowerCase())) ??
-      TEAMS[team].flagColors[0]
-    );
-  }
-
-  function isChampionConnector(matchId: string, side: 0 | 1) {
-    if (!champ) return false;
-    let id: string | null = 'F';
-
-    while (id) {
-      const selected = picks[id];
-      if (selected === undefined) return false;
-      if (id === matchId) return selected === side;
-
-      const match = matchById(id);
-      const nextNode = selected === 0 ? match.a : match.b;
-      const nextMatch = getMatchById(nextNode);
-      id = nextMatch?.id ?? null;
-    }
-
-    return false;
-  }
-
-  function connectorTeam(c: Connector): TeamId | undefined {
-    if (picks[c.matchId] !== c.side) return undefined;
-    const match = matchById(c.matchId);
-    const child = c.side === 0 ? match.a : match.b;
-    return resolveTeam(child, picks);
-  }
-
-  function connectorColor(c: Connector): string | undefined {
-    const team = connectorTeam(c);
-    return team ? flagAccentColor(team) : undefined;
-  }
 
   // Celebrate when a champion is crowned or changed — but not on the initial
   // load of a shared bracket, and not when the final is cleared.
@@ -230,26 +213,131 @@
 
   function shareText() {
     const message = champ ? t.shareChampion(teamName(champ)) : t.shareGeneric;
-    return `${message} ${location.href}`;
+    return `${message} ${shareUrl}`;
   }
 
-  async function share() {
-    const data = {
-      title: `${t.wordmark} 2026`,
-      text: shareText()
-    };
+  function fileName() {
+    return `world-cup-2026-bracket${champ ? `-${champ}` : ''}.png`;
+  }
 
+  // ---- image generation ---------------------------------------------------
+  // The bracket's flags/trophy are SVG <image> elements pointing at same-origin
+  // URLs. html-to-image rasterises via an SVG-in-foreignObject that cannot load
+  // external refs — leaving the *whole* capture blank — so we inline them as
+  // data URIs first. Cached, since the same flags recur across renders.
+  const dataUriCache = new Map<string, string>();
+
+  async function toDataUri(url: string): Promise<string> {
+    const cached = dataUriCache.get(url);
+    if (cached) return cached;
+    const blob = await (await fetch(url)).blob();
+    const uri = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    dataUriCache.set(url, uri);
+    return uri;
+  }
+
+  async function inlineImages(root: HTMLElement) {
+    await Promise.all(
+      Array.from(root.querySelectorAll('image')).map(async (el) => {
+        const href = el.getAttribute('href');
+        if (href && !href.startsWith('data:')) el.setAttribute('href', await toDataUri(href));
+      })
+    );
+  }
+
+  async function buildImage(): Promise<Blob> {
+    if (!exportCard) throw new Error('export card not mounted');
+    await document.fonts.ready;
+    await inlineImages(exportCard);
+    const { toBlob } = await import('html-to-image');
+    const blob = await toBlob(exportCard, { pixelRatio: 2, cacheBust: true });
+    if (!blob) throw new Error('rasterization failed');
+    return blob;
+  }
+
+  function startPreview() {
+    shareStatus = 'generating';
+    revokePreview();
+    imageBlob = null;
+    pendingBlob = buildImage();
+    pendingBlob
+      .then((blob) => {
+        imageBlob = blob;
+        imageUrl = URL.createObjectURL(blob);
+        shareStatus = 'ready';
+      })
+      .catch(() => {
+        shareStatus = 'error';
+      });
+  }
+
+  // Safari loses the user gesture if the blob is awaited before constructing the
+  // ClipboardItem, so callers pass this Promise<Blob> straight in.
+  function imageBlobPromise(): Promise<Blob> {
+    if (imageBlob) return Promise.resolve(imageBlob);
+    return pendingBlob ?? (pendingBlob = buildImage());
+  }
+
+  function revokePreview() {
+    if (imageUrl) {
+      URL.revokeObjectURL(imageUrl);
+      imageUrl = null;
+    }
+  }
+
+  function flashStatus(s: ShareStatus) {
+    shareStatus = s;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      if (shareOpen) shareStatus = imageUrl ? 'ready' : 'idle';
+    }, 1800);
+  }
+
+  // ---- share actions ------------------------------------------------------
+  function copyImage() {
+    if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+      void downloadPng();
+      return;
+    }
     try {
-      if (navigator.share) {
-        await navigator.share(data);
-        shareStatus = 'shared';
-      } else {
-        await navigator.clipboard.writeText(data.text);
-        shareStatus = 'copied';
-      }
-      setTimeout(() => (shareStatus = 'idle'), 1600);
+      const item = new ClipboardItem({ 'image/png': imageBlobPromise() });
+      navigator.clipboard
+        .write([item])
+        .then(() => flashStatus('image-copied'))
+        .catch(() => void downloadPng());
     } catch {
-      shareStatus = 'idle';
+      void downloadPng();
+    }
+  }
+
+  async function downloadPng() {
+    try {
+      const blob = await imageBlobPromise();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      flashStatus('downloaded');
+    } catch {
+      shareStatus = 'error';
+    }
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      flashStatus('copied');
+    } catch {
+      shareStatus = 'error';
     }
   }
 
@@ -259,6 +347,79 @@
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
+  async function nativeShare() {
+    const title = `${t.wordmark} 2026`;
+    try {
+      const blob = await imageBlobPromise();
+      const file = new File([blob], fileName(), { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title, text: shareText(), files: [file] });
+      } else if (navigator.share) {
+        await navigator.share({ title, text: shareText() });
+      } else {
+        await copyLink();
+        return;
+      }
+      flashStatus('shared');
+    } catch (e) {
+      // A user-cancelled share is not an error; just settle back to ready.
+      if ((e as Error)?.name !== 'AbortError') shareStatus = imageUrl ? 'ready' : 'error';
+    }
+  }
+
+  // ---- modal plumbing -----------------------------------------------------
+  function openShare() {
+    shareOpen = true;
+    startPreview();
+  }
+
+  function closeShare() {
+    shareOpen = false;
+    clearTimeout(statusTimer);
+    revokePreview();
+    imageBlob = null;
+    pendingBlob = null;
+    shareStatus = 'idle';
+    shareButton?.focus();
+  }
+
+  // Focus the dialog when it opens.
+  $effect(() => {
+    if (shareOpen && dialogEl) (closeBtn ?? dialogEl).focus();
+  });
+
+  function focusables(): HTMLElement[] {
+    if (!dialogEl) return [];
+    return Array.from(
+      dialogEl.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => el.offsetParent !== null);
+  }
+
+  function onDialogKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeShare();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const items = focusables();
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  function onBackdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) closeShare();
+  }
 </script>
 
 <svelte:head>
@@ -324,12 +485,7 @@
     <h1 class="wordmark">{t.wordmark} <span class="yr">2026</span></h1>
 
     <div class="actions">
-      <button class="btn btn--go" onclick={share}>
-        {shareStatus === 'shared' ? t.shared : shareStatus === 'copied' ? t.linkCopied : t.share}
-      </button>
-      <button class="btn btn--x" onclick={shareToX} aria-label={t.shareToX}>
-        <img src="/x-logo.svg" alt="" aria-hidden="true" />
-      </button>
+      <button class="btn btn--go" onclick={openShare} bind:this={shareButton}>{t.share}</button>
       <button class="btn" onclick={loadReal} title={t.realResultsTitle}>
         {t.realResults}
       </button>
@@ -338,106 +494,7 @@
   </header>
 
   <div class="board">
-    <svg viewBox="0 {BRACKET_TOP_CROP} {VW} {BRACKET_VIEW_HEIGHT}" role="group" aria-label={t.bracketAria}>
-      {#each connectors as c}
-        <path d={c.path} class="conn" />
-      {/each}
-      {#each connectors as c}
-        {#if picks[c.matchId] === c.side}
-          <path
-            d={c.path}
-            class="conn conn--picked"
-            class:conn--champion={isChampionConnector(c.matchId, c.side)}
-            style:--pick-color={connectorColor(c)}
-          />
-        {/if}
-      {/each}
-
-      <!-- The FIFA World Cup trophy. -->
-      {#snippet trophy(scale: number)}
-        <g transform="scale({scale})">
-          <image
-            href={TROPHY_IMAGE_URL}
-            x="-58"
-            y="-138"
-            width="116"
-            height="270"
-            preserveAspectRatio="xMidYMid meet"
-          />
-        </g>
-      {/snippet}
-
-      <!-- centre: trophy until the final is decided, then the champion writ large -->
-      {#if champ}
-        <g class="champion" transform="translate({CX},{CY})">
-          <clipPath id="champion-flag-clip">
-            <circle r="44" />
-          </clipPath>
-          <image
-            href={flagUrl(champ)}
-            x={-44}
-            y={-44}
-            width={88}
-            height={88}
-            preserveAspectRatio="xMidYMid slice"
-            clip-path="url(#champion-flag-clip)"
-          />
-          <circle r="46" class="champion-ring" />
-          <g transform="translate(0,-70)">{@render trophy(0.28)}</g>
-        </g>
-      {:else}
-        <g transform="translate({CX},{CY})">{@render trophy(0.92)}</g>
-      {/if}
-
-      {#each allNodes as n (n.id)}
-        {@const team = teamOf(n.id)}
-        {@const isChampSeat = champNode === n.id}
-        {@const isPicked = n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
-        {@const isChampionPick = n.parentMatch !== undefined && n.side !== undefined && isChampionConnector(n.parentMatch, n.side)}
-        {@const isActive = activePopoverNode === n.id}
-        <g
-          transform="translate({n.x},{n.y})"
-          data-node={n.id}
-          class="node"
-          class:clickable={team !== undefined}
-          class:flash={flashing.has(n.id)}
-          class:champseat={isChampSeat}
-          class:picked={isPicked}
-          class:championpick={isChampionPick}
-          class:active={isActive}
-          style:--pick-color={team ? flagAccentColor(team) : undefined}
-        >
-          {#if team}
-            <clipPath id="flag-clip-{n.id}">
-              <circle r={n.r} />
-            </clipPath>
-            <image
-              href={flagUrl(team)}
-              x={-n.r}
-              y={-n.r}
-              width={n.r * 2}
-              height={n.r * 2}
-              preserveAspectRatio="xMidYMid slice"
-              clip-path="url(#flag-clip-{n.id})"
-            />
-          {/if}
-          <circle r={n.r} class="ring" class:empty={!team} class:filled={team} />
-          {#if team}
-            {@const name = teamName(team)}
-            <g
-              class="country-popover"
-              class:country-popover--visible={activePopoverNode === n.id}
-              transform="translate(0,{-n.r - 18})"
-            >
-              <rect x={-name.length * 3.8 - 10} y="-16" width={name.length * 7.6 + 20} height="24" rx="12" />
-              <text text-anchor="middle" dominant-baseline="middle" y="-4">
-                {name}
-              </text>
-            </g>
-          {/if}
-        </g>
-      {/each}
-    </svg>
+    <BracketSvg {picks} {teamName} ariaLabel={t.bracketAria} idPrefix="live-" theme={resolvedTheme} {activePopoverNode} {flashing} />
     {#each allNodes as n (n.id)}
       {@const team = teamOf(n.id)}
       {#if team}
@@ -464,6 +521,88 @@
     <a href="{REPOSITORY_URL}/compare" target="_blank" rel="noreferrer">{t.createPr}</a>
   </footer>
 </main>
+
+<!-- Off-screen, branded export card that gets rasterised into the share image.
+     The stage holds it off-screen; the card itself stays normally positioned so
+     html-to-image renders it inside its foreignObject viewport. The card mirrors
+     the resolved on-screen theme via an explicit palette (light/dark modifier),
+     and the bracket inside follows the same theme through its presentation
+     attributes — so the export matches what the user sees. -->
+{#if ready}
+  <div class="export-stage" aria-hidden="true">
+    <div class="export-card" class:export-card--dark={resolvedTheme === 'dark'} bind:this={exportCard}>
+      <div class="export-card__inner">
+        <div class="export-card__bracket">
+          <BracketSvg {picks} {teamName} ariaLabel={t.bracketAria} idPrefix="export-" interactive={false} theme={resolvedTheme} />
+        </div>
+        <div class="export-card__footer">
+          {#if champ}
+            <div class="export-card__champ">
+              <img class="export-card__champ-flag" src={flagUrl(champ)} alt="" />
+              <div class="export-card__champ-text">
+                <span class="export-card__champ-label">{t.predictedChampion}</span>
+                <span class="export-card__champ-name">{teamName(champ)}</span>
+              </div>
+            </div>
+          {:else}
+            <p class="export-card__neutral">{t.bracketSoFar}</p>
+          {/if}
+          <p class="export-card__url">{displayUrl}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if shareOpen}
+  <div class="share-overlay" role="presentation" onclick={onBackdropClick}>
+    <div
+      class="share-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="share-modal-title"
+      tabindex="-1"
+      bind:this={dialogEl}
+      onkeydown={onDialogKeydown}
+    >
+      <div class="share-modal__head">
+        <h2 id="share-modal-title">{t.shareTitle}</h2>
+        <button
+          class="share-close"
+          onclick={closeShare}
+          aria-label={t.shareClose}
+          bind:this={closeBtn}
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="share-preview" aria-live="polite">
+        {#if shareStatus === 'error'}
+          <div class="share-preview__msg">{t.shareImageError}</div>
+        {:else if imageUrl}
+          <img class="share-preview__img" src={imageUrl} alt={t.sharePreviewAlt} />
+        {:else}
+          <div class="share-preview__msg share-preview__msg--loading">{t.shareRendering}</div>
+        {/if}
+      </div>
+
+      <div class="share-actions">
+        <button class="btn btn--go" onclick={copyImage} disabled={!imageBlob}>{t.copyImage}</button>
+        <button class="btn" onclick={downloadPng} disabled={!imageBlob}>{t.downloadPng}</button>
+        <button class="btn" onclick={copyLink}>{t.copyLink}</button>
+        <button class="btn btn--x" onclick={shareToX} aria-label={t.shareToX}>
+          <img src="/x-logo.svg" alt="" aria-hidden="true" />
+        </button>
+        {#if canNativeShare}
+          <button class="btn" onclick={nativeShare}>{t.shareNative}</button>
+        {/if}
+      </div>
+
+      <p class="share-status" aria-live="polite">{statusLabel || ' '}</p>
+    </div>
+  </div>
+{/if}
 
 <style>
   /* Fonts and the light/dark palette tokens now live in the root layout's
@@ -664,6 +803,14 @@
   .btn:active {
     transform: translateY(1px);
   }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn:disabled:hover {
+    background: transparent;
+    border-color: var(--line);
+  }
   .btn--go {
     background: var(--gold-fill);
     border-color: var(--gold);
@@ -774,135 +921,254 @@
     outline-offset: 3px;
   }
 
-  svg {
-    width: 100%;
-    height: auto;
-    display: block;
-    overflow: visible;
+  /* ---- share modal ------------------------------------------------------ */
+  .share-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(26, 25, 22, 0.55);
+    backdrop-filter: blur(2px);
+    animation: overlay-in 0.15s ease;
   }
-
-  .conn {
-    stroke: var(--stroke);
-    stroke-width: 1.7;
-    fill: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    opacity: 0.5;
-    transition:
-      opacity 0.2s ease,
-      stroke 0.2s ease,
-      stroke-width 0.2s ease,
-      filter 0.2s ease;
-  }
-  .conn--picked {
-    stroke: var(--pick-color, var(--green));
-    stroke-width: 3.5;
-    opacity: 1;
-    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--pick-color, var(--green)) 45%, transparent));
-  }
-  .conn--champion {
-    stroke: var(--gold);
-    stroke-width: 4.5;
-    filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.65));
-  }
-  .champion-ring {
-    fill: none;
-    stroke: var(--gold-bright);
-    stroke-width: 5;
-    filter: drop-shadow(0 0 10px rgba(217, 179, 74, 0.85));
-    animation: pop 0.35s ease-out;
-  }
-  @keyframes pop {
-    0% {
-      transform: scale(0.6);
+  @keyframes overlay-in {
+    from {
       opacity: 0;
     }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
   }
-
-  .node {
+  .share-modal {
+    box-sizing: border-box;
+    width: min(92vw, 420px);
+    max-height: 92vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 1.1rem 1.1rem 1.25rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(26, 25, 22, 0.35);
+    animation: modal-in 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .share-modal:focus {
     outline: none;
   }
-  .node.clickable {
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+  }
+  .share-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+  }
+  .share-modal__head h2 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 900;
+    font-stretch: expanded;
+    text-transform: uppercase;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+  .share-close {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    font-size: 1.5rem;
+    line-height: 1;
     cursor: pointer;
   }
-  .ring {
-    fill: var(--ring-fill);
-    stroke: var(--stroke);
-    stroke-width: 1.5;
-    transition:
-      stroke 0.2s,
-      r 0.2s;
+  .share-close:hover {
+    background: var(--hover-bg);
+    color: var(--ink);
   }
-  .ring.empty {
-    fill: var(--empty-fill);
-    stroke: var(--empty-stroke);
-    stroke-dasharray: 3 3;
+  .share-close:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
   }
-  .ring.filled {
-    fill: none;
+  .share-preview {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    width: 100%;
+    overflow: hidden;
+    background: var(--empty-fill);
+    border: 1px solid var(--line);
+    border-radius: 12px;
   }
-  .node.active .ring {
-    stroke: var(--gold-bright);
-    stroke-width: 3;
+  .share-preview__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
-
-  .picked .ring {
-    stroke: var(--pick-color, var(--green));
-    stroke-width: 3;
-    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--pick-color, var(--green)) 45%, transparent));
-  }
-
-  .championpick .ring {
-    stroke: var(--gold);
-    stroke-width: 3.5;
-    filter: drop-shadow(0 0 5px rgba(217, 179, 74, 0.65));
-  }
-
-  .champseat .ring {
-    stroke: var(--gold-bright);
-    stroke-width: 4;
-    filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.8));
-  }
-
-  .country-popover {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s ease;
-  }
-  .country-popover rect {
-    fill: var(--ink);
-    stroke: rgba(242, 239, 228, 0.42);
-    stroke-width: 1;
-    filter: drop-shadow(0 2px 5px rgba(26, 25, 22, 0.22));
-  }
-  .country-popover text {
-    fill: var(--paper);
+  .share-preview__msg {
+    padding: 1rem;
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .share-preview__msg--loading {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.4;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .share-overlay,
+    .share-modal {
+      animation: none;
+    }
+    .share-preview__msg--loading {
+      animation: none;
+    }
+  }
+  .share-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+  .share-actions .btn {
+    flex: 1 1 auto;
+  }
+  .share-actions .btn--x {
+    flex: 0 0 auto;
+  }
+  .share-status {
+    min-height: 1.1rem;
+    margin: 0.7rem 0 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-  .country-popover--visible {
-    opacity: 1;
+    color: var(--green);
   }
 
-  .flash .ring {
-    animation: flash 0.7s ease-out;
+  /* ---- off-screen export card ------------------------------------------- */
+  .export-stage {
+    position: fixed;
+    left: -99999px;
+    top: 0;
+    pointer-events: none;
   }
-  @keyframes flash {
-    0% {
-      stroke: var(--flash);
-      stroke-width: 5;
-    }
-    100% {
-      stroke: var(--empty-stroke);
-      stroke-width: 1.5;
-    }
+  .export-card {
+    position: relative;
+    width: 1080px;
+    height: 1080px;
+    /* An explicit palette (not light-dark()) because html-to-image rasterises
+       from concrete computed colours. It mirrors the resolved on-screen theme:
+       light by default, dark via the modifier below. The bracket's strokes
+       follow the same theme through their presentation attributes. */
+    --paper: #f2efe4;
+    --ink: #1a1916;
+    --muted: #7c7565;
+    --gold: #c8992f;
+    background: var(--paper);
+    color: var(--ink);
   }
-
+  .export-card--dark {
+    --paper: #16140f;
+    --ink: #ece7d6;
+    --muted: #989083;
+    --gold: #d8a93c;
+  }
+  .export-card__inner {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .export-card__bracket {
+    /* Sized to fill most of the card. The bracket is slightly taller than wide
+       (880×932 viewBox), so its height is the limiting dimension — this width
+       fills the vertical budget left by the reserved footer. */
+    width: 856px;
+    /* Equal auto margins above and below (paired with the footer's auto
+       margin-top) keep the bracket vertically centred now the title is gone. */
+    margin-top: auto;
+  }
+  .export-card__footer {
+    margin-top: auto;
+    /* Reserve a fixed height so the taller champion call-out occupies the same
+       footprint as the neutral caption — the bracket size above is then safe
+       for either state. */
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .export-card__champ {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .export-card__champ-flag {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--gold);
+  }
+  .export-card__champ-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+  }
+  .export-card__champ-label {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .export-card__champ-name {
+    font-family: var(--display);
+    font-weight: 900;
+    font-stretch: expanded;
+    text-transform: uppercase;
+    font-size: 38px;
+    line-height: 1;
+  }
+  .export-card__neutral {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 900;
+    font-stretch: expanded;
+    text-transform: uppercase;
+    font-size: 32px;
+    color: var(--muted);
+  }
+  .export-card__url {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+  }
 </style>

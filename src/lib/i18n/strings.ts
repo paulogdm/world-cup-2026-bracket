@@ -47,6 +47,35 @@ export interface Strings {
   shareChampion: (name: string) => string;
   /** Share message before a champion is decided. */
   shareGeneric: string;
+  // ── Share popup ──────────────────────────────────────────────────────────
+  /** Heading of the share dialog. */
+  shareTitle: string;
+  /** Accessible label for the dialog's close button. */
+  shareClose: string;
+  /** Placeholder shown while the bracket image is being generated. */
+  shareRendering: string;
+  /** Body shown when image generation fails (link/X still work). */
+  shareImageError: string;
+  /** Alt text for the generated preview image. */
+  sharePreviewAlt: string;
+  /** Primary action: copy the rendered image to the clipboard. */
+  copyImage: string;
+  /** Action: download the rendered image as a PNG. */
+  downloadPng: string;
+  /** Action: copy the shareable link. */
+  copyLink: string;
+  /** Action: open the OS-native share sheet. */
+  shareNative: string;
+  /** Status: the image was copied to the clipboard. */
+  imageCopied: string;
+  /** Status: the image was downloaded. */
+  imageDownloaded: string;
+  /** Status: image couldn't be built but the link still works. */
+  imageUnavailable: string;
+  /** Export-card label above the champion's name. */
+  predictedChampion: string;
+  /** Export-card caption when no champion is decided yet. */
+  bracketSoFar: string;
 }
 
 export const STRINGS: Record<Locale, Strings> = {
@@ -77,7 +106,21 @@ export const STRINGS: Record<Locale, Strings> = {
     backHome: 'Back to the bracket',
     pick: (name) => `Pick ${name}`,
     shareChampion: (name) => `Check my prediction: ${name} will be champion!`,
-    shareGeneric: 'Check the interactive knockout stage here:'
+    shareGeneric: 'Check the interactive knockout stage here:',
+    shareTitle: 'Share your bracket',
+    shareClose: 'Close share dialog',
+    shareRendering: 'Rendering your bracket…',
+    shareImageError: 'Couldn’t build the image. You can still copy the link or share to X.',
+    sharePreviewAlt: 'Preview of your World Cup 2026 bracket',
+    copyImage: 'Copy image',
+    downloadPng: 'Download PNG',
+    copyLink: 'Copy link',
+    shareNative: 'Share…',
+    imageCopied: 'Image copied',
+    imageDownloaded: 'Image downloaded',
+    imageUnavailable: 'Image unavailable — link still works',
+    predictedChampion: 'Predicted champion',
+    bracketSoFar: 'My bracket so far'
   },
   'pt-BR': {
     langLabel: 'Idioma',
@@ -106,7 +149,21 @@ export const STRINGS: Record<Locale, Strings> = {
     backHome: 'Voltar ao chaveamento',
     pick: (name) => `Escolher ${name}`,
     shareChampion: (name) => `Veja meu palpite: ${name} vai ser campeão!`,
-    shareGeneric: 'Veja o mata-mata interativo aqui:'
+    shareGeneric: 'Veja o mata-mata interativo aqui:',
+    shareTitle: 'Compartilhe seu chaveamento',
+    shareClose: 'Fechar janela de compartilhamento',
+    shareRendering: 'Gerando seu chaveamento…',
+    shareImageError: 'Não foi possível gerar a imagem. Você ainda pode copiar o link ou compartilhar no X.',
+    sharePreviewAlt: 'Prévia do seu chaveamento da Copa do Mundo 2026',
+    copyImage: 'Copiar imagem',
+    downloadPng: 'Baixar PNG',
+    copyLink: 'Copiar link',
+    shareNative: 'Compartilhar…',
+    imageCopied: 'Imagem copiada',
+    imageDownloaded: 'Imagem baixada',
+    imageUnavailable: 'Imagem indisponível — o link funciona',
+    predictedChampion: 'Campeão previsto',
+    bracketSoFar: 'Meu chaveamento até agora'
   },
   es: {
     langLabel: 'Idioma',
@@ -135,6 +192,20 @@ export const STRINGS: Record<Locale, Strings> = {
     backHome: 'Volver al cuadro',
     pick: (name) => `Elegir ${name}`,
     shareChampion: (name) => `Mira mi pronóstico: ¡${name} será campeón!`,
-    shareGeneric: 'Mira la fase eliminatoria interactiva aquí:'
+    shareGeneric: 'Mira la fase eliminatoria interactiva aquí:',
+    shareTitle: 'Comparte tu cuadro',
+    shareClose: 'Cerrar ventana de compartir',
+    shareRendering: 'Generando tu cuadro…',
+    shareImageError: 'No se pudo crear la imagen. Aún puedes copiar el enlace o compartir en X.',
+    sharePreviewAlt: 'Vista previa de tu cuadro de la Copa del Mundo 2026',
+    copyImage: 'Copiar imagen',
+    downloadPng: 'Descargar PNG',
+    copyLink: 'Copiar enlace',
+    shareNative: 'Compartir…',
+    imageCopied: 'Imagen copiada',
+    imageDownloaded: 'Imagen descargada',
+    imageUnavailable: 'Imagen no disponible — el enlace funciona',
+    predictedChampion: 'Campeón previsto',
+    bracketSoFar: 'Mi cuadro hasta ahora'
   }
 };
