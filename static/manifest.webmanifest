@@ -1,0 +1,17 @@
+{
+  "name": "World Cup 2026 — Interactive Bracket",
+  "short_name": "WC2026 Bracket",
+  "description": "Interactive World Cup 2026 bracket — click flags to advance teams. Share your bracket via the URL.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}
