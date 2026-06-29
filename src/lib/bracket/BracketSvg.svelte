@@ -2,6 +2,7 @@
   import {
     allNodes,
     connectors,
+    finalChildren,
     getMatchById,
     matchById,
     CX,
@@ -108,21 +109,33 @@
   } as const;
   const pal = $derived(PALETTE[theme]);
 
+  // A filled finalist still waiting to be crowned — the contender the user is
+  // meant to choose between for the championship.
+  const isFinalist = (id: string) => finalChildren.includes(id);
+
   function ringStroke(
     team: TeamId | undefined,
     isChampSeat: boolean,
     isPicked: boolean,
-    isChampionPick: boolean
+    isChampionPick: boolean,
+    isContender: boolean
   ): string {
     if (isChampSeat) return pal.champSeat;
     if (isChampionPick) return pal.gold;
+    if (isContender) return pal.gold;
     if (isPicked && team) return flagAccentColor(team);
     if (team) return pal.ringBase;
     return pal.emptyStroke;
   }
 
-  function ringWidth(isChampSeat: boolean, isPicked: boolean, isChampionPick: boolean): number {
+  function ringWidth(
+    isChampSeat: boolean,
+    isPicked: boolean,
+    isChampionPick: boolean,
+    isContender: boolean
+  ): number {
     if (isChampSeat) return 4;
+    if (isContender) return 4;
     if (isChampionPick) return 3.5;
     if (isPicked) return 3;
     return 1.5;
@@ -206,6 +219,7 @@
     {@const isChampSeat = champNode === n.id}
     {@const isPicked = n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
     {@const isChampionPick = n.parentMatch !== undefined && n.side !== undefined && isChampionConnector(n.parentMatch, n.side)}
+    {@const isContender = !champ && team !== undefined && isFinalist(n.id)}
     {@const isActive = activePopoverNode === n.id}
     <g
       transform="translate({n.x},{n.y})"
@@ -216,6 +230,7 @@
       class:champseat={isChampSeat}
       class:picked={isPicked}
       class:championpick={isChampionPick}
+      class:contender={isContender}
       class:active={isActive}
       style:--pick-color={team ? flagAccentColor(team) : undefined}
     >
@@ -243,8 +258,8 @@
         class:empty={!team}
         class:filled={team}
         fill={team ? 'none' : pal.emptyFill}
-        stroke={ringStroke(team, isChampSeat, isPicked, isChampionPick)}
-        stroke-width={ringWidth(isChampSeat, isPicked, isChampionPick)}
+        stroke={ringStroke(team, isChampSeat, isPicked, isChampionPick, isContender)}
+        stroke-width={ringWidth(isChampSeat, isPicked, isChampionPick, isContender)}
       />
       {#if team && interactive}
         {@const name = teamName(team)}
@@ -363,6 +378,37 @@
     stroke: var(--gold-bright);
     stroke-width: 4;
     filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.8));
+  }
+
+  /* The two filled finalists before a champion is crowned — pulse to invite the
+     final pick. The active (hover/focus) ring still wins via the rule above. */
+  .contender .ring {
+    stroke: var(--gold);
+    stroke-width: 4;
+    filter: drop-shadow(0 0 6px rgba(217, 179, 74, 0.7));
+    animation: contender-pulse 1s ease-in-out infinite;
+  }
+  @keyframes contender-pulse {
+    0%,
+    100% {
+      stroke: var(--gold);
+      stroke-width: 3;
+      filter: drop-shadow(0 0 3px rgba(217, 179, 74, 0.5));
+    }
+    50% {
+      stroke: var(--gold-bright);
+      stroke-width: 7;
+      filter: drop-shadow(0 0 16px rgba(217, 179, 74, 1));
+    }
+  }
+  /* The export card captures one frame — no mid-pulse stroke. */
+  .bracket-svg--static .contender .ring {
+    animation: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .contender .ring {
+      animation: none;
+    }
   }
 
   .country-popover {

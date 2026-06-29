@@ -47,6 +47,8 @@ export interface Strings {
   shareChampion: (name: string) => string;
   /** Share message before a champion is decided. */
   shareGeneric: string;
+  /** Nudge shown when every match but the final is filled — pick the champion. */
+  pickChampionHint: string;
   // ── Share popup ──────────────────────────────────────────────────────────
   /** Heading of the share dialog. */
   shareTitle: string;
@@ -107,6 +109,7 @@ export const STRINGS: Record<Locale, Strings> = {
     pick: (name) => `Pick ${name}`,
     shareChampion: (name) => `Check my prediction: ${name} will be champion!`,
     shareGeneric: 'Check the interactive knockout stage here:',
+    pickChampionHint: 'Last step — pick your champion',
     shareTitle: 'Share your bracket',
     shareClose: 'Close share dialog',
     shareRendering: 'Rendering your bracket…',
@@ -150,6 +153,7 @@ export const STRINGS: Record<Locale, Strings> = {
     pick: (name) => `Escolher ${name}`,
     shareChampion: (name) => `Veja meu palpite: ${name} vai ser campeão!`,
     shareGeneric: 'Veja o mata-mata interativo aqui:',
+    pickChampionHint: 'Última etapa — escolha seu campeão',
     shareTitle: 'Compartilhe seu chaveamento',
     shareClose: 'Fechar janela de compartilhamento',
     shareRendering: 'Gerando seu chaveamento…',
@@ -193,6 +197,7 @@ export const STRINGS: Record<Locale, Strings> = {
     pick: (name) => `Elegir ${name}`,
     shareChampion: (name) => `Mira mi pronóstico: ¡${name} será campeón!`,
     shareGeneric: 'Mira la fase eliminatoria interactiva aquí:',
+    pickChampionHint: 'Último paso — elige tu campeón',
     shareTitle: 'Comparte tu cuadro',
     shareClose: 'Cerrar ventana de compartir',
     shareRendering: 'Generando tu cuadro…',
