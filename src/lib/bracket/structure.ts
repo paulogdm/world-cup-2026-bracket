@@ -49,13 +49,13 @@ const RADIUS_FRACTION: Record<PlacedRound, number> = {
 };
 
 const FLAG_RADIUS: Record<PlacedRound, number> = {
-  LEAF: 27,
-  R32: 23,
-  R16: 21,
-  QF: 20,
+  LEAF: 30,
+  R32: 26,
+  R16: 24,
+  QF: 23,
   // The two semifinalists are the finalists — the championship contenders — so
   // their circles are the largest on the board to draw the eye to the final pick.
-  SF: 30
+  SF: 38
 };
 
 const deg2rad = (d: number) => (d * Math.PI) / 180;
@@ -187,7 +187,7 @@ function polarPoint(angle: number, radius: number) {
   };
 }
 
-function connectorPath(c: Omit<Connector, 'path'>): string {
+function connectorPath(c: Omit<Connector, 'path'>, centerBend = false): string {
   const startAngle = Math.atan2(CY - c.y1, c.x1 - CX);
   const endAngle = Math.atan2(CY - c.y2, c.x2 - CX);
   const startRadius = Math.hypot(c.x1 - CX, c.y1 - CY);
@@ -198,7 +198,12 @@ function connectorPath(c: Omit<Connector, 'path'>): string {
     return `M ${c.x1} ${c.y1} Q ${control.x} ${control.y} ${c.x2} ${c.y2}`;
   }
 
-  const bendRadius = (startRadius + endRadius) / 2;
+  // Normally the two branches bend at the midpoint radius, which leaves the
+  // arc converging at the node's outer edge with a short radial stub into the
+  // centre. For the finalists (the championship contenders) we converge the
+  // arcs at the node's own radius instead, so the vertical stroke runs through
+  // the middle of the contender circle rather than kissing its edge.
+  const bendRadius = centerBend ? endRadius : (startRadius + endRadius) / 2;
   const startBend = polarPoint(startAngle, bendRadius);
   const endBend = polarPoint(endAngle, bendRadius);
   const rawDelta = endAngle - startAngle;
@@ -217,10 +222,12 @@ export const connectors: Connector[] = matches.flatMap((m) => {
   const out = m.outId ? nodes.get(m.outId)! : { x: CX, y: CY };
   const a = nodes.get(m.a)!;
   const b = nodes.get(m.b)!;
+  // Branches feeding a finalist seat converge at the circle's centre.
+  const centerBend = m.outId !== null && finalChildren.includes(m.outId);
   const connectorA = { matchId: m.id, side: 0 as const, x1: a.x, y1: a.y, x2: out.x, y2: out.y };
   const connectorB = { matchId: m.id, side: 1 as const, x1: b.x, y1: b.y, x2: out.x, y2: out.y };
   return [
-    { ...connectorA, path: connectorPath(connectorA) },
-    { ...connectorB, path: connectorPath(connectorB) }
+    { ...connectorA, path: connectorPath(connectorA, centerBend) },
+    { ...connectorB, path: connectorPath(connectorB, centerBend) }
   ];
 });
