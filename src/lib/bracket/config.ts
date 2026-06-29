@@ -30,7 +30,7 @@ export const defaultResults: Record<string, TeamId> = {
   // 'R32-06': 'es',     // Spain           vs Austria
   // 'R32-07': 'us',     // United States   vs Bosnia & Herzegovina
   // 'R32-08': 'be',     // Senegal         vs Belgium
-  // 'R32-09': 'br',     // Brazil          vs Japan
+  'R32-09': 'br', //     Brazil          vs Japan  ⚠️ PLACEHOLDER — set to 'br' or 'jp' once the match ends, then merge
   // 'R32-10': 'ci',     // Côte d'Ivoire   vs Norway
   // 'R32-11': 'mx',     // Mexico          vs Ecuador
   // 'R32-12': 'gb-eng', // England         vs DR Congo
