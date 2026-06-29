@@ -53,7 +53,9 @@ const FLAG_RADIUS: Record<PlacedRound, number> = {
   R32: 23,
   R16: 21,
   QF: 20,
-  SF: 21
+  // The two semifinalists are the finalists — the championship contenders — so
+  // their circles are the largest on the board to draw the eye to the final pick.
+  SF: 30
 };
 
 const deg2rad = (d: number) => (d * Math.PI) / 180;

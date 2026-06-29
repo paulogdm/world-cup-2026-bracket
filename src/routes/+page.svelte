@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
 
   import BracketSvg from '$lib/bracket/BracketSvg.svelte';
-  import { allNodes, matchById, VW, VH, type BracketNode } from '$lib/bracket/structure';
+  import { allNodes, matchById, finalChildren, VW, VH, type BracketNode } from '$lib/bracket/structure';
   import {
     champion,
     encode,
@@ -136,6 +136,14 @@
   });
 
   const champ = $derived(champion(picks));
+  // Both finalists are set but the centre is still empty — everything else has
+  // been filled, so nudge the user to crown the champion (the easy step to miss).
+  const needsChampion = $derived(
+    ready &&
+      !champ &&
+      resolveTeam(finalChildren[0], picks) !== undefined &&
+      resolveTeam(finalChildren[1], picks) !== undefined
+  );
   const displayUrl = $derived(shareUrl.replace(/^https?:\/\//, ''));
 
   const statusLabel = $derived(
@@ -509,6 +517,24 @@
         </button>
       {/if}
     {/each}
+
+    {#if needsChampion}
+      <div class="champ-hint" role="status">
+        <span class="champ-hint__pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              d="M12 5v14M12 5l-5 5M12 5l5 5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          {t.pickChampionHint}
+        </span>
+      </div>
+    {/if}
   </div>
 
   <footer class="site-footer">
@@ -875,6 +901,58 @@
   .node-button:focus-visible {
     outline: 3px solid var(--gold);
     outline-offset: 3px;
+  }
+
+  /* Sits just below the centre trophy and points up at it — only shown once
+     every match but the final is filled (see `needsChampion`). */
+  .champ-hint {
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    top: 63%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    animation: hint-in 0.3s ease backwards;
+  }
+  .champ-hint__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--gold);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 14px rgba(26, 25, 22, 0.18);
+    animation: hint-bob 1.6s ease-in-out infinite;
+  }
+  .champ-hint__pill svg {
+    width: 0.85rem;
+    height: 0.85rem;
+    color: var(--gold);
+  }
+  @keyframes hint-in {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(4px);
+    }
+  }
+  @keyframes hint-bob {
+    50% {
+      transform: translateY(-3px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .champ-hint,
+    .champ-hint__pill {
+      animation: none;
+    }
   }
 
   .sr-only {
