@@ -532,10 +532,6 @@
   <div class="export-stage" aria-hidden="true">
     <div class="export-card" class:export-card--dark={resolvedTheme === 'dark'} bind:this={exportCard}>
       <div class="export-card__inner">
-        <header class="export-card__head">
-          <p class="export-card__eyebrow">{t.eyebrow}</p>
-          <h2 class="export-card__title">{t.wordmark} <span>2026</span></h2>
-        </header>
         <div class="export-card__bracket">
           <BracketSvg {picks} {teamName} ariaLabel={t.bracketAria} idPrefix="export-" interactive={false} theme={resolvedTheme} />
         </div>
@@ -1103,34 +1099,11 @@
     flex-direction: column;
     align-items: center;
   }
-  .export-card__head {
-    text-align: center;
-  }
-  .export-card__eyebrow {
-    margin: 0 0 8px;
-    font-family: var(--mono);
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .export-card__title {
-    margin: 0;
-    font-family: var(--display);
-    font-weight: 900;
-    font-stretch: 125%;
-    text-transform: uppercase;
-    font-size: 68px;
-    line-height: 0.9;
-    letter-spacing: 0.005em;
-  }
-  .export-card__title span {
-    color: var(--gold);
-  }
   .export-card__bracket {
-    width: 720px;
-    margin-top: 8px;
+    width: 760px;
+    /* Equal auto margins above and below (paired with the footer's auto
+       margin-top) keep the bracket vertically centred now the title is gone. */
+    margin-top: auto;
   }
   .export-card__footer {
     margin-top: auto;
