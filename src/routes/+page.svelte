@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { fade } from 'svelte/transition';
 
   import {
     allNodes,
@@ -212,11 +213,15 @@
     <p class="eyebrow">Knockout predictor — USA · Canada · Mexico</p>
     <h1 class="wordmark">World Cup <span class="yr">2026</span></h1>
 
-    <div class="readout" class:readout--empty={!champ} aria-live="polite">
+    <div class="readout" aria-live="polite">
       {#if champ}
-        <span class="readout__crown">Champions</span>
-        <img class="readout__flag" src={flagUrl(champ)} alt="" aria-hidden="true" />
-        <span class="readout__name">{TEAMS[champ].name}</span>
+        {#key champ}
+          <div class="readout__content" transition:fade={{ duration: 180 }}>
+            <span class="readout__crown">Champions</span>
+            <img class="readout__flag" src={flagUrl(champ)} alt="" aria-hidden="true" />
+            <span class="readout__name">{TEAMS[champ].name}</span>
+          </div>
+        {/key}
       {/if}
     </div>
 
@@ -490,12 +495,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.55rem;
     min-height: 2.4rem;
     margin-block: 14px;
   }
-  .readout--empty {
-    visibility: hidden;
+  .readout__content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
   }
   .readout__crown {
     font-family: var(--mono);
