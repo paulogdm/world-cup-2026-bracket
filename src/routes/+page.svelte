@@ -19,7 +19,7 @@
   import { STRINGS } from '$lib/i18n/strings';
   import { localizedTeamName } from '$lib/i18n/team-names';
   import { i18n, initLocale } from '$lib/i18n/store.svelte';
-  import { THEMES, type Theme } from '$lib/theme/themes';
+  import { type Theme } from '$lib/theme/themes';
   import { theme, initTheme } from '$lib/theme/store.svelte';
 
   // Current UI strings, reactive to the selected locale.
@@ -32,10 +32,12 @@
     light: t.themeLight,
     dark: t.themeDark
   });
-  // The toggle cycles through the modes in declared order (system → light → dark).
-  function cycleTheme() {
-    const next = (THEMES.indexOf(theme.value) + 1) % THEMES.length;
-    theme.value = THEMES[next];
+  // The toggle flips between the two concrete appearances based on what's
+  // currently on screen. `system` stays the initial default (so first paint can
+  // follow the OS), but the toggle never returns to it — otherwise one click in
+  // three would be a visual no-op whenever `system` happens to match the OS.
+  function toggleTheme() {
+    theme.value = resolvedTheme === 'dark' ? 'light' : 'dark';
   }
 
   // The real-world default state. Computed once so it can seed the prerendered
@@ -431,11 +433,16 @@
     <button
       type="button"
       class="theme-toggle"
-      onclick={cycleTheme}
-      title="{t.themeLabel}: {themeName[theme.value]}"
-      aria-label="{t.themeLabel}: {themeName[theme.value]}"
+      onclick={toggleTheme}
+      title="{t.themeLabel}: {themeName[resolvedTheme]}"
+      aria-label="{t.themeLabel}: {themeName[resolvedTheme]}"
     >
-      {#if theme.value === 'light'}
+      {#if resolvedTheme === 'dark'}
+        <!-- moon -->
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a0.6 0.6 0 0 0-0.8-0.8 9.2 9.2 0 1 0 12.1 12.1 0.6 0.6 0 0 0-0.8-0.8z" />
+        </svg>
+      {:else}
         <!-- sun -->
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
           <circle cx="12" cy="12" r="4.2" />
@@ -446,17 +453,6 @@
             stroke-width="1.7"
             stroke-linecap="round"
           />
-        </svg>
-      {:else if theme.value === 'dark'}
-        <!-- moon -->
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-          <path d="M20 14.5A8 8 0 0 1 9.5 4a0.6 0.6 0 0 0-0.8-0.8 9.2 9.2 0 1 0 12.1 12.1 0.6 0.6 0 0 0-0.8-0.8z" />
-        </svg>
-      {:else}
-        <!-- system / auto: half-filled circle -->
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7" />
-          <path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" />
         </svg>
       {/if}
     </button>
