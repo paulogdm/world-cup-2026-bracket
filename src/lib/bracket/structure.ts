@@ -6,14 +6,8 @@ import { LEFT_HALF, RIGHT_HALF, type TeamId } from './teams';
 
 export type Round = 'R32' | 'R16' | 'QF' | 'SF' | 'F';
 export const ROUND_ORDER: Round[] = ['R32', 'R16', 'QF', 'SF', 'F'];
-
-export const ROUND_LABEL: Record<Round, string> = {
-  R32: 'Round of 32',
-  R16: 'Round of 16',
-  QF: 'Quarter-final',
-  SF: 'Semi-final',
-  F: 'Final'
-};
+type PlacedRound = Exclude<Round, 'F'> | 'LEAF';
+const BRACKET_ROUNDS: Exclude<Round, 'F'>[] = ['R32', 'R16', 'QF', 'SF'];
 
 export interface BracketNode {
   id: string;
@@ -46,7 +40,7 @@ const MAXR = 380;
 const LEAF_ANGLE_STEP = 360 / (LEFT_HALF.length + RIGHT_HALF.length);
 const TOP_AXIS = 90;
 
-const RADIUS_FRACTION: Record<string, number> = {
+const RADIUS_FRACTION: Record<PlacedRound, number> = {
   LEAF: 1.0,
   R32: 0.8,
   R16: 0.62,
@@ -54,7 +48,7 @@ const RADIUS_FRACTION: Record<string, number> = {
   SF: 0.3
 };
 
-const FLAG_RADIUS: Record<string, number> = {
+const FLAG_RADIUS: Record<PlacedRound, number> = {
   LEAF: 27,
   R32: 23,
   R16: 21,
@@ -75,7 +69,7 @@ function place(angleDeg: number, fraction: number, flagR: number) {
   return { x: CX + r * Math.cos(a), y: CY - r * Math.sin(a), r: flagR };
 }
 
-function assignLeaves(half: 'L' | 'R', leaves: TeamId[]) {
+function assignLeaves(half: 'L' | 'R', leaves: readonly TeamId[]) {
   leaves.forEach((team, i) => {
     const angle =
       half === 'R'
@@ -96,11 +90,11 @@ function assignLeaves(half: 'L' | 'R', leaves: TeamId[]) {
 const counters: Record<Round, number> = { R32: 1, R16: 1, QF: 1, SF: 1, F: 1 };
 const pad = (n: number) => String(n).padStart(2, '0');
 
-function buildHalf(half: 'L' | 'R', leaves: TeamId[]): string {
+function buildHalf(half: 'L' | 'R', leaves: readonly TeamId[]): string {
   assignLeaves(half, leaves);
   let level = leaves.map((t) => `leaf-${t}`);
 
-  for (const round of ['R32', 'R16', 'QF', 'SF'] as Round[]) {
+  for (const round of BRACKET_ROUNDS) {
     const next: string[] = [];
     for (let i = 0; i < level.length; i += 2) {
       const aId = level[i];
@@ -143,8 +137,22 @@ nodes.get(rightSF)!.side = 1;
 export const allNodes: BracketNode[] = [...nodes.values()];
 
 const matchMap = new Map(matches.map((m) => [m.id, m]));
-export const matchById = (id: string): MatchDef => matchMap.get(id)!;
-export const nodeById = (id: string): BracketNode => nodes.get(id)!;
+
+export function getMatchById(id: string): MatchDef | undefined {
+  return matchMap.get(id);
+}
+
+export function matchById(id: string): MatchDef {
+  const match = getMatchById(id);
+  if (!match) throw new Error(`Unknown match id: ${id}`);
+  return match;
+}
+
+export function nodeById(id: string): BracketNode {
+  const node = nodes.get(id);
+  if (!node) throw new Error(`Unknown node id: ${id}`);
+  return node;
+}
 
 export const finalChildren: [string, string] = [leftSF, rightSF];
 
@@ -167,13 +175,50 @@ export interface Connector {
   y1: number;
   x2: number;
   y2: number;
+  path: string;
 }
+
+function polarPoint(angle: number, radius: number) {
+  return {
+    x: CX + radius * Math.cos(angle),
+    y: CY - radius * Math.sin(angle)
+  };
+}
+
+function connectorPath(c: Omit<Connector, 'path'>): string {
+  const startAngle = Math.atan2(CY - c.y1, c.x1 - CX);
+  const endAngle = Math.atan2(CY - c.y2, c.x2 - CX);
+  const startRadius = Math.hypot(c.x1 - CX, c.y1 - CY);
+  const endRadius = Math.hypot(c.x2 - CX, c.y2 - CY);
+
+  if (endRadius < 1) {
+    const control = polarPoint(startAngle, startRadius * 0.42);
+    return `M ${c.x1} ${c.y1} Q ${control.x} ${control.y} ${c.x2} ${c.y2}`;
+  }
+
+  const bendRadius = (startRadius + endRadius) / 2;
+  const startBend = polarPoint(startAngle, bendRadius);
+  const endBend = polarPoint(endAngle, bendRadius);
+  const rawDelta = endAngle - startAngle;
+  const delta = Math.atan2(Math.sin(rawDelta), Math.cos(rawDelta));
+  const sweep = delta < 0 ? 1 : 0;
+
+  return [
+    `M ${c.x1} ${c.y1}`,
+    `L ${startBend.x} ${startBend.y}`,
+    `A ${bendRadius} ${bendRadius} 0 0 ${sweep} ${endBend.x} ${endBend.y}`,
+    `L ${c.x2} ${c.y2}`
+  ].join(' ');
+}
+
 export const connectors: Connector[] = matches.flatMap((m) => {
   const out = m.outId ? nodes.get(m.outId)! : { x: CX, y: CY };
   const a = nodes.get(m.a)!;
   const b = nodes.get(m.b)!;
+  const connectorA = { matchId: m.id, side: 0 as const, x1: a.x, y1: a.y, x2: out.x, y2: out.y };
+  const connectorB = { matchId: m.id, side: 1 as const, x1: b.x, y1: b.y, x2: out.x, y2: out.y };
   return [
-    { matchId: m.id, side: 0, x1: a.x, y1: a.y, x2: out.x, y2: out.y },
-    { matchId: m.id, side: 1, x1: b.x, y1: b.y, x2: out.x, y2: out.y }
+    { ...connectorA, path: connectorPath(connectorA) },
+    { ...connectorB, path: connectorPath(connectorB) }
   ];
 });

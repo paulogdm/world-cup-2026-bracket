@@ -1,46 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import flagAr from 'flag-icons/flags/1x1/ar.svg?url';
-  import flagAt from 'flag-icons/flags/1x1/at.svg?url';
-  import flagAu from 'flag-icons/flags/1x1/au.svg?url';
-  import flagBa from 'flag-icons/flags/1x1/ba.svg?url';
-  import flagBe from 'flag-icons/flags/1x1/be.svg?url';
-  import flagBr from 'flag-icons/flags/1x1/br.svg?url';
-  import flagCa from 'flag-icons/flags/1x1/ca.svg?url';
-  import flagCd from 'flag-icons/flags/1x1/cd.svg?url';
-  import flagCh from 'flag-icons/flags/1x1/ch.svg?url';
-  import flagCi from 'flag-icons/flags/1x1/ci.svg?url';
-  import flagCo from 'flag-icons/flags/1x1/co.svg?url';
-  import flagCv from 'flag-icons/flags/1x1/cv.svg?url';
-  import flagDe from 'flag-icons/flags/1x1/de.svg?url';
-  import flagDz from 'flag-icons/flags/1x1/dz.svg?url';
-  import flagEc from 'flag-icons/flags/1x1/ec.svg?url';
-  import flagEg from 'flag-icons/flags/1x1/eg.svg?url';
-  import flagEs from 'flag-icons/flags/1x1/es.svg?url';
-  import flagFr from 'flag-icons/flags/1x1/fr.svg?url';
-  import flagGbEng from 'flag-icons/flags/1x1/gb-eng.svg?url';
-  import flagGh from 'flag-icons/flags/1x1/gh.svg?url';
-  import flagHr from 'flag-icons/flags/1x1/hr.svg?url';
-  import flagJp from 'flag-icons/flags/1x1/jp.svg?url';
-  import flagMa from 'flag-icons/flags/1x1/ma.svg?url';
-  import flagMx from 'flag-icons/flags/1x1/mx.svg?url';
-  import flagNl from 'flag-icons/flags/1x1/nl.svg?url';
-  import flagNo from 'flag-icons/flags/1x1/no.svg?url';
-  import flagPt from 'flag-icons/flags/1x1/pt.svg?url';
-  import flagPy from 'flag-icons/flags/1x1/py.svg?url';
-  import flagSe from 'flag-icons/flags/1x1/se.svg?url';
-  import flagSn from 'flag-icons/flags/1x1/sn.svg?url';
-  import flagUs from 'flag-icons/flags/1x1/us.svg?url';
-  import flagZa from 'flag-icons/flags/1x1/za.svg?url';
 
   import {
     allNodes,
     connectors,
+    getMatchById,
     matchById,
     CX,
     CY,
     VW,
     VH,
+    type BracketNode,
     type Connector
   } from '$lib/bracket/structure';
   import {
@@ -83,40 +53,17 @@
   const champNode = $derived(championNode(picks));
   const TROPHY_IMAGE_URL = '/world-cup-trophy.svg';
   const REPOSITORY_URL = 'https://github.com/paulogdm/world-cup-2026-bracket';
-  const flagUrls: Record<TeamId, string> = {
-    ar: flagAr,
-    at: flagAt,
-    au: flagAu,
-    ba: flagBa,
-    be: flagBe,
-    br: flagBr,
-    ca: flagCa,
-    cd: flagCd,
-    ch: flagCh,
-    ci: flagCi,
-    co: flagCo,
-    cv: flagCv,
-    de: flagDe,
-    dz: flagDz,
-    ec: flagEc,
-    eg: flagEg,
-    es: flagEs,
-    fr: flagFr,
-    'gb-eng': flagGbEng,
-    gh: flagGh,
-    hr: flagHr,
-    jp: flagJp,
-    ma: flagMa,
-    mx: flagMx,
-    nl: flagNl,
-    no: flagNo,
-    pt: flagPt,
-    py: flagPy,
-    se: flagSe,
-    sn: flagSn,
-    us: flagUs,
-    za: flagZa
-  };
+  const flagModules = import.meta.glob<string>(
+    '/node_modules/flag-icons/flags/1x1/{ar,at,au,ba,be,br,ca,cd,ch,ci,co,cv,de,dz,ec,eg,es,fr,gb-eng,gh,hr,jp,ma,mx,nl,no,pt,py,se,sn,us,za}.svg',
+    {
+      eager: true,
+      import: 'default',
+      query: '?url'
+    }
+  );
+  const flagUrls = Object.fromEntries(
+    Object.entries(flagModules).map(([path, url]) => [path.match(/\/([^/]+)\.svg$/)![1], url])
+  ) as Record<TeamId, string>;
 
   function flagUrl(team: TeamId): string {
     return flagUrls[team];
@@ -127,39 +74,6 @@
       TEAMS[team].flagColors.find((color) => !['#ffffff', '#000000'].includes(color.toLowerCase())) ??
       TEAMS[team].flagColors[0]
     );
-  }
-
-  function polarPoint(angle: number, radius: number) {
-    return {
-      x: CX + radius * Math.cos(angle),
-      y: CY - radius * Math.sin(angle)
-    };
-  }
-
-  function connectorPath(c: Connector): string {
-    const startAngle = Math.atan2(CY - c.y1, c.x1 - CX);
-    const endAngle = Math.atan2(CY - c.y2, c.x2 - CX);
-    const startRadius = Math.hypot(c.x1 - CX, c.y1 - CY);
-    const endRadius = Math.hypot(c.x2 - CX, c.y2 - CY);
-
-    if (endRadius < 1) {
-      const control = polarPoint(startAngle, startRadius * 0.42);
-      return `M ${c.x1} ${c.y1} Q ${control.x} ${control.y} ${c.x2} ${c.y2}`;
-    }
-
-    const bendRadius = (startRadius + endRadius) / 2;
-    const startBend = polarPoint(startAngle, bendRadius);
-    const endBend = polarPoint(endAngle, bendRadius);
-    const rawDelta = endAngle - startAngle;
-    const delta = Math.atan2(Math.sin(rawDelta), Math.cos(rawDelta));
-    const sweep = delta < 0 ? 1 : 0;
-
-    return [
-      `M ${c.x1} ${c.y1}`,
-      `L ${startBend.x} ${startBend.y}`,
-      `A ${bendRadius} ${bendRadius} 0 0 ${sweep} ${endBend.x} ${endBend.y}`,
-      `L ${c.x2} ${c.y2}`
-    ].join(' ');
   }
 
   function isChampionConnector(matchId: string, side: 0 | 1) {
@@ -173,7 +87,7 @@
 
       const match = matchById(id);
       const nextNode = selected === 0 ? match.a : match.b;
-      const nextMatch = matchById(nextNode);
+      const nextMatch = getMatchById(nextNode);
       id = nextMatch?.id ?? null;
     }
 
@@ -210,7 +124,7 @@
 
   async function celebrate(winner: TeamId) {
     const confetti = (await import('canvas-confetti')).default;
-    const colors = TEAMS[winner].flagColors;
+    const colors = [...TEAMS[winner].flagColors];
     const opts = { colors, disableForReducedMotion: true, zIndex: 9999 };
     confetti({ ...opts, particleCount: 130, spread: 90, startVelocity: 45, origin: { y: 0.4 } });
     confetti({ ...opts, particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.6 } });
@@ -219,6 +133,14 @@
 
   function teamOf(id: string): TeamId | undefined {
     return resolveTeam(id, picks);
+  }
+
+  function nodeButtonStyle(n: BracketNode): string {
+    return [
+      `--node-x: ${(n.x / VW) * 100}%`,
+      `--node-y: ${(n.y / VH) * 100}%`,
+      `--node-size: ${((n.r * 2) / VW) * 100}%`
+    ].join('; ');
   }
 
   function pick(nodeId: string) {
@@ -329,12 +251,12 @@
   <div class="board">
     <svg viewBox="0 0 {VW} {VH}" role="group" aria-label="{TITLE} bracket">
       {#each connectors as c}
-        <path d={connectorPath(c)} class="conn" />
+        <path d={c.path} class="conn" />
       {/each}
       {#each connectors as c}
         {#if picks[c.matchId] === c.side}
           <path
-            d={connectorPath(c)}
+            d={c.path}
             class="conn conn--picked"
             class:conn--champion={isChampionConnector(c.matchId, c.side)}
             style:--pick-color={connectorColor(c)}
@@ -383,25 +305,18 @@
         {@const isChampSeat = champNode === n.id}
         {@const isPicked = n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
         {@const isChampionPick = n.parentMatch !== undefined && n.side !== undefined && isChampionConnector(n.parentMatch, n.side)}
+        {@const isActive = activePopoverNode === n.id}
         <g
           transform="translate({n.x},{n.y})"
           data-node={n.id}
           class="node"
-          class:clickable={team}
+          class:clickable={team !== undefined}
           class:flash={flashing.has(n.id)}
           class:champseat={isChampSeat}
           class:picked={isPicked}
           class:championpick={isChampionPick}
+          class:active={isActive}
           style:--pick-color={team ? flagAccentColor(team) : undefined}
-          role={team ? 'button' : undefined}
-          tabindex={team ? 0 : undefined}
-          aria-label={team ? TEAMS[team].name : 'Awaiting winner'}
-          onclick={() => pick(n.id)}
-          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), pick(n.id))}
-          onpointerenter={() => team && (activePopoverNode = n.id)}
-          onpointerleave={() => activePopoverNode === n.id && (activePopoverNode = null)}
-          onfocus={() => team && (activePopoverNode = n.id)}
-          onblur={() => activePopoverNode === n.id && (activePopoverNode = null)}
         >
           {#if team}
             <clipPath id="flag-clip-{n.id}">
@@ -439,6 +354,24 @@
         </g>
       {/each}
     </svg>
+    {#each allNodes as n (n.id)}
+      {@const team = teamOf(n.id)}
+      {#if team}
+        <button
+          class="node-button"
+          style={nodeButtonStyle(n)}
+          aria-label="Pick {TEAMS[team].name}"
+          aria-pressed={n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
+          onclick={() => pick(n.id)}
+          onpointerenter={() => (activePopoverNode = n.id)}
+          onpointerleave={() => activePopoverNode === n.id && (activePopoverNode = null)}
+          onfocus={() => (activePopoverNode = n.id)}
+          onblur={() => activePopoverNode === n.id && (activePopoverNode = null)}
+        >
+          <span class="sr-only">Pick {TEAMS[team].name}</span>
+        </button>
+      {/if}
+    {/each}
   </div>
 
   <footer class="site-footer">
@@ -449,6 +382,49 @@
 </main>
 
 <style>
+  @font-face {
+    font-family: 'Archivo';
+    font-style: normal;
+    font-weight: 600;
+    font-stretch: expanded;
+    font-display: swap;
+    src: url('/fonts/archivo-expanded-600.ttf') format('truetype');
+  }
+
+  @font-face {
+    font-family: 'Archivo';
+    font-style: normal;
+    font-weight: 800;
+    font-stretch: expanded;
+    font-display: swap;
+    src: url('/fonts/archivo-expanded-800.ttf') format('truetype');
+  }
+
+  @font-face {
+    font-family: 'Archivo';
+    font-style: normal;
+    font-weight: 900;
+    font-stretch: expanded;
+    font-display: swap;
+    src: url('/fonts/archivo-expanded-900.ttf') format('truetype');
+  }
+
+  @font-face {
+    font-family: 'Space Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/space-mono-400.ttf') format('truetype');
+  }
+
+  @font-face {
+    font-family: 'Space Mono';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/fonts/space-mono-700.ttf') format('truetype');
+  }
+
   :global(body) {
     margin: 0;
     /* Palette drawn from the poster + trophy: paper, ink, trophy gold, pitch green. */
@@ -663,7 +639,39 @@
   }
 
   .board {
+    position: relative;
     width: 100%;
+  }
+
+  .node-button {
+    position: absolute;
+    z-index: 2;
+    top: var(--node-y);
+    left: var(--node-x);
+    width: max(var(--node-size), 2.25rem);
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+  }
+  .node-button:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 3px;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .site-footer {
@@ -765,8 +773,7 @@
   .ring.filled {
     fill: none;
   }
-  .node.clickable:hover .ring,
-  .node.clickable:focus-visible .ring {
+  .node.active .ring {
     stroke: #d9b34a;
     stroke-width: 3;
   }
