@@ -53,4 +53,12 @@ body {
   color: var(--ink);
   font-family:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* This is an interactive bracket, not an article — there's no body copy to
+     copy. Disabling text selection stops a finger-drag on mobile from grabbing
+     UI text, including the hidden country-name popovers that would otherwise
+     select as invisible "ghost" text. `-webkit-tap-highlight-color` drops the
+     grey flash iOS Safari paints over tapped elements. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
