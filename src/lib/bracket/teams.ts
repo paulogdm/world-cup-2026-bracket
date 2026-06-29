@@ -5,16 +5,17 @@
 // These ids are also what you reference in `config.ts` when recording
 // real-world results.
 
-export type TeamId = string;
-export type FlagColorPalette = [string, string, string] | [string, string, string, string];
+export type FlagColorPalette =
+  | readonly [string, string, string]
+  | readonly [string, string, string, string];
 
-export interface Team {
-  id: TeamId;
+interface TeamDefinition {
+  id: string;
   name: string;
   flagColors: FlagColorPalette;
 }
 
-export const TEAMS: Record<TeamId, Team> = {
+export const TEAMS = {
   py: { id: 'py', name: 'Paraguay', flagColors: ['#d52b1e', '#ffffff', '#0038a8'] },
   de: { id: 'de', name: 'Germany', flagColors: ['#000000', '#dd0000', '#ffce00'] },
   fr: { id: 'fr', name: 'France', flagColors: ['#0055a4', '#ffffff', '#ef4135'] },
@@ -47,13 +48,16 @@ export const TEAMS: Record<TeamId, Team> = {
   dz: { id: 'dz', name: 'Algeria', flagColors: ['#006233', '#ffffff', '#d21034'] },
   gh: { id: 'gh', name: 'Ghana', flagColors: ['#ce1126', '#fcd116', '#006b3f', '#000000'] },
   co: { id: 'co', name: 'Colombia', flagColors: ['#fcd116', '#003893', '#ce1126'] }
-};
+} as const satisfies Record<string, TeamDefinition>;
+
+export type TeamId = keyof typeof TEAMS;
+export type Team = (typeof TEAMS)[TeamId];
 
 // Round-of-32 seeding, read off the poster. Each half collapses inward to a
 // semifinalist; the two semifinalists meet in the final at the centre trophy.
 // Order matters: adjacent pairs (0,1) (2,3) ... are the first-round matches,
 // listed from the top seam down to the bottom seam.
-export const LEFT_HALF: TeamId[] = [
+export const LEFT_HALF = [
   'py', 'de', // R32-01  Paraguay vs Germany
   'fr', 'se', // R32-02  France vs Sweden
   'za', 'ca', // R32-03  South Africa vs Canada
@@ -62,9 +66,9 @@ export const LEFT_HALF: TeamId[] = [
   'es', 'at', // R32-06  Spain vs Austria
   'us', 'ba', // R32-07  United States vs Bosnia & Herzegovina
   'sn', 'be' //  R32-08  Senegal vs Belgium
-];
+] as const satisfies readonly TeamId[];
 
-export const RIGHT_HALF: TeamId[] = [
+export const RIGHT_HALF = [
   'br', 'jp', //      R32-09  Brazil vs Japan
   'ci', 'no', //      R32-10  Côte d'Ivoire vs Norway
   'mx', 'ec', //      R32-11  Mexico vs Ecuador
@@ -73,4 +77,4 @@ export const RIGHT_HALF: TeamId[] = [
   'au', 'eg', //      R32-14  Australia vs Egypt
   'ch', 'dz', //      R32-15  Switzerland vs Algeria
   'gh', 'co' //       R32-16  Ghana vs Colombia
-];
+] as const satisfies readonly TeamId[];
