@@ -1094,32 +1094,40 @@
     box-sizing: border-box;
     width: 100%;
     height: 100%;
-    padding: 56px 64px;
+    padding: 32px;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
   .export-card__bracket {
-    width: 760px;
+    /* Sized to fill most of the card. The bracket is slightly taller than wide
+       (880×932 viewBox), so its height is the limiting dimension — this width
+       fills the vertical budget left by the reserved footer. */
+    width: 856px;
     /* Equal auto margins above and below (paired with the footer's auto
        margin-top) keep the bracket vertically centred now the title is gone. */
     margin-top: auto;
   }
   .export-card__footer {
     margin-top: auto;
+    /* Reserve a fixed height so the taller champion call-out occupies the same
+       footprint as the neutral caption — the bracket size above is then safe
+       for either state. */
+    min-height: 96px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    gap: 10px;
   }
   .export-card__champ {
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 16px;
   }
   .export-card__champ-flag {
-    width: 68px;
-    height: 68px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid var(--gold);
@@ -1132,7 +1140,7 @@
   }
   .export-card__champ-label {
     font-family: var(--mono);
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -1143,7 +1151,7 @@
     font-weight: 900;
     font-stretch: expanded;
     text-transform: uppercase;
-    font-size: 42px;
+    font-size: 38px;
     line-height: 1;
   }
   .export-card__neutral {
@@ -1152,7 +1160,7 @@
     font-weight: 900;
     font-stretch: expanded;
     text-transform: uppercase;
-    font-size: 34px;
+    font-size: 32px;
     color: var(--muted);
   }
   .export-card__url {
