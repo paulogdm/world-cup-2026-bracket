@@ -13,8 +13,12 @@
     type Picks
   } from '$lib/bracket/state';
   import { TEAMS, type TeamId } from '$lib/bracket/teams';
-  import { defaultResults, TITLE } from '$lib/bracket/config';
+  import { defaultResults } from '$lib/bracket/config';
   import { flagUrl } from '$lib/bracket/flags';
+  import { LOCALES, LOCALE_META, type Locale } from '$lib/i18n/locales';
+  import { STRINGS } from '$lib/i18n/strings';
+  import { localizedTeamName } from '$lib/i18n/team-names';
+  import { i18n, initLocale } from '$lib/i18n/store.svelte';
 
   type ShareStatus =
     | 'idle'
@@ -26,7 +30,19 @@
     | 'shared'
     | 'error';
 
-  let picks = $state<Picks>({});
+  // Current UI strings, reactive to the selected locale.
+  const t = $derived(STRINGS[i18n.locale]);
+  const teamName = (id: TeamId) => localizedTeamName(id, i18n.locale);
+
+  // The real-world default state. Computed once so it can seed the prerendered
+  // markup *and* be compared against on every URL sync (see below).
+  const DEFAULT_PICKS = picksFromResults(defaultResults);
+  const DEFAULT_ENCODED = encode(DEFAULT_PICKS);
+
+  // Seed with the default so the prerendered HTML already shows the real
+  // bracket (no empty-skeleton flash, and crawlers/no-JS get real content).
+  // A shared `?b=...` bracket is applied client-side in onMount.
+  let picks = $state<Picks>(DEFAULT_PICKS);
   let flashing = $state<Set<string>>(new Set());
   let ready = $state(false);
   let activePopoverNode = $state<string | null>(null);
@@ -50,21 +66,30 @@
   const BRACKET_VIEW_HEIGHT = VH - BRACKET_TOP_CROP;
   const REPOSITORY_URL = 'https://github.com/paulogdm/world-cup-2026-bracket';
 
-  // Initial state: shared bracket from the URL, else the real-world default.
+  // Resolve the UI language (stored choice → browser preference → English) and
+  // override the default with a shared bracket only when the URL carries one.
   onMount(() => {
+    initLocale();
     const b = new URLSearchParams(location.search).get('b');
-    picks = b ? decode(b) : picksFromResults(defaultResults);
+    if (b) picks = decode(b);
     shareUrl = location.href;
     canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
     ready = true;
   });
 
+  // Keep the document language in sync with the selected locale.
+  $effect(() => {
+    document.documentElement.lang = LOCALE_META[i18n.locale].htmlLang;
+  });
+
   // Keep the URL in sync with every change (replaceState = no history spam).
+  // The default state stays a bare URL — never pin a snapshot of it into `?b`,
+  // so the canonical link keeps tracking the redeployed defaults.
   $effect(() => {
     if (!ready) return;
     const b = encode(picks);
     const url = new URL(location.href);
-    if (b) url.searchParams.set('b', b);
+    if (b && b !== DEFAULT_ENCODED) url.searchParams.set('b', b);
     else url.searchParams.delete('b');
     history.replaceState(history.state, '', url);
     shareUrl = url.href;
@@ -75,17 +100,28 @@
 
   const statusLabel = $derived(
     shareStatus === 'image-copied'
-      ? 'Image copied to clipboard'
+      ? t.imageCopied
       : shareStatus === 'downloaded'
-        ? 'Image downloaded'
+        ? t.imageDownloaded
         : shareStatus === 'copied'
-          ? 'Link copied'
+          ? t.linkCopied
           : shareStatus === 'shared'
-            ? 'Shared'
+            ? t.shared
             : shareStatus === 'error'
-              ? 'Image unavailable — link still works'
+              ? t.imageUnavailable
               : ''
   );
+
+  // Flags for the language switcher (kept separate from the team flags so the
+  // switcher doesn't depend on those codes happening to be teams).
+  const localeFlagModules = import.meta.glob<string>(
+    '/node_modules/flag-icons/flags/1x1/{us,br,es}.svg',
+    { eager: true, import: 'default', query: '?url' }
+  );
+  const localeFlagUrls = Object.fromEntries(
+    Object.entries(localeFlagModules).map(([path, url]) => [path.match(/\/([^/]+)\.svg$/)![1], url])
+  ) as Record<string, string>;
+  const localeFlag = (loc: Locale) => localeFlagUrls[LOCALE_META[loc].flag];
 
   // Celebrate when a champion is crowned or changed — but not on the initial
   // load of a shared bracket, and not when the final is cleared.
@@ -149,9 +185,8 @@
   }
 
   function shareText() {
-    return champ
-      ? `Check my prediction: ${TEAMS[champ].name} will be champion! ${shareUrl}`
-      : `Check the interactive knockout stage here: ${shareUrl}`;
+    const message = champ ? t.shareChampion(teamName(champ)) : t.shareGeneric;
+    return `${message} ${shareUrl}`;
   }
 
   function fileName() {
@@ -290,9 +325,9 @@
       const blob = await imageBlobPromise();
       const file = new File([blob], fileName(), { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: TITLE, text: shareText(), files: [file] });
+        await navigator.share({ title: `${t.wordmark} 2026`, text: shareText(), files: [file] });
       } else if (navigator.share) {
-        await navigator.share({ title: TITLE, text: shareText() });
+        await navigator.share({ title: `${t.wordmark} 2026`, text: shareText() });
       } else {
         await copyLink();
         return;
@@ -360,33 +395,58 @@
 </script>
 
 <svelte:head>
-  <title>{TITLE} — Interactive Bracket</title>
+  <title>{t.wordmark} 2026 — {t.bracketSuffix}</title>
 </svelte:head>
 
 <main>
+  <nav class="lang-switch" aria-label={t.langLabel}>
+    {#each LOCALES as loc}
+      <button
+        type="button"
+        class="lang-btn"
+        class:active={i18n.locale === loc}
+        lang={LOCALE_META[loc].htmlLang}
+        aria-pressed={i18n.locale === loc}
+        aria-label={LOCALE_META[loc].label}
+        title={LOCALE_META[loc].label}
+        onclick={() => (i18n.locale = loc)}
+      >
+        <img src={localeFlag(loc)} alt="" aria-hidden="true" />
+        <span>{LOCALE_META[loc].short}</span>
+      </button>
+    {/each}
+  </nav>
+
   <header class="masthead">
-    <p class="eyebrow">Knockout predictor — USA · Canada · Mexico</p>
-    <h1 class="wordmark">World Cup <span class="yr">2026</span></h1>
+    <p class="eyebrow">{t.eyebrow}</p>
+    <h1 class="wordmark">{t.wordmark} <span class="yr">2026</span></h1>
 
     <div class="actions">
-      <button class="btn btn--go" onclick={openShare} bind:this={shareButton}>Share</button>
-      <button class="btn" onclick={loadReal} title="Load the real-world results from config.ts">
-        Real results
+      <button class="btn btn--go" onclick={openShare} bind:this={shareButton}>{t.share}</button>
+      <button class="btn" onclick={loadReal} title={t.realResultsTitle}>
+        {t.realResults}
       </button>
-      <button class="btn" onclick={clearAll}>Clear</button>
+      <button class="btn" onclick={clearAll}>{t.clear}</button>
     </div>
   </header>
 
   {#if ready}
     <div class="board">
-      <BracketSvg {picks} idPrefix="live-" {activePopoverNode} {flashing} />
+      <BracketSvg
+        {picks}
+        idPrefix="live-"
+        {activePopoverNode}
+        {flashing}
+        ariaLabel={t.bracketAria}
+        {teamName}
+      />
       {#each allNodes as n (n.id)}
         {@const team = teamOf(n.id)}
         {#if team}
           <button
             class="node-button"
             style={nodeButtonStyle(n)}
-            aria-label="Pick {TEAMS[team].name}"
+            aria-label={t.pick(teamName(team))}
             aria-pressed={n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
             onclick={() => pick(n.id)}
             onpointerenter={() => (activePopoverNode = n.id)}
@@ -394,19 +454,19 @@
             onfocus={() => (activePopoverNode = n.id)}
             onblur={() => activePopoverNode === n.id && (activePopoverNode = null)}
           >
-            <span class="sr-only">Pick {TEAMS[team].name}</span>
+            <span class="sr-only">{t.pick(teamName(team))}</span>
           </button>
         {/if}
       {/each}
     </div>
   {:else}
-    <div class="board board--loading" aria-busy="true" aria-label="Loading bracket"></div>
+    <div class="board board--loading" aria-busy="true" aria-label={t.loadingBracket}></div>
   {/if}
 
   <footer class="site-footer">
-    <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub</a>
+    <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">{t.github}</a>
     <span aria-hidden="true">/</span>
-    <a href="{REPOSITORY_URL}/compare" target="_blank" rel="noreferrer">Create a PR</a>
+    <a href="{REPOSITORY_URL}/compare" target="_blank" rel="noreferrer">{t.createPr}</a>
   </footer>
 </main>
 
@@ -418,23 +478,29 @@
     <div class="export-card" bind:this={exportCard}>
       <div class="export-card__inner">
       <header class="export-card__head">
-        <p class="export-card__eyebrow">Knockout predictor — USA · Canada · Mexico</p>
-        <h2 class="export-card__title">World Cup <span>2026</span></h2>
+        <p class="export-card__eyebrow">{t.eyebrow}</p>
+        <h2 class="export-card__title">{t.wordmark} <span>2026</span></h2>
       </header>
       <div class="export-card__bracket">
-        <BracketSvg {picks} idPrefix="export-" interactive={false} />
+        <BracketSvg
+          {picks}
+          idPrefix="export-"
+          interactive={false}
+          ariaLabel={t.bracketAria}
+          {teamName}
+        />
       </div>
       <div class="export-card__footer">
         {#if champ}
           <div class="export-card__champ">
             <img class="export-card__champ-flag" src={flagUrl(champ)} alt="" />
             <div class="export-card__champ-text">
-              <span class="export-card__champ-label">Predicted champion</span>
-              <span class="export-card__champ-name">{TEAMS[champ].name}</span>
+              <span class="export-card__champ-label">{t.predictedChampion}</span>
+              <span class="export-card__champ-name">{teamName(champ)}</span>
             </div>
           </div>
         {:else}
-          <p class="export-card__neutral">My bracket so far</p>
+          <p class="export-card__neutral">{t.bracketSoFar}</p>
         {/if}
         <p class="export-card__url">{displayUrl}</p>
       </div>
@@ -455,11 +521,11 @@
       onkeydown={onDialogKeydown}
     >
       <div class="share-modal__head">
-        <h2 id="share-modal-title">Share your bracket</h2>
+        <h2 id="share-modal-title">{t.shareTitle}</h2>
         <button
           class="share-close"
           onclick={closeShare}
-          aria-label="Close share dialog"
+          aria-label={t.closeShare}
           bind:this={closeBtn}
         >
           ×
@@ -469,28 +535,24 @@
       <div class="share-preview" aria-live="polite">
         {#if shareStatus === 'error'}
           <div class="share-preview__msg">
-            Couldn’t build the image. You can still copy the link or share to X.
+            {t.imageBuildError}
           </div>
         {:else if imageUrl}
-          <img
-            class="share-preview__img"
-            src={imageUrl}
-            alt="Preview of your World Cup 2026 bracket"
-          />
+          <img class="share-preview__img" src={imageUrl} alt={t.previewAlt} />
         {:else}
-          <div class="share-preview__msg share-preview__msg--loading">Rendering your bracket…</div>
+          <div class="share-preview__msg share-preview__msg--loading">{t.rendering}</div>
         {/if}
       </div>
 
       <div class="share-actions">
-        <button class="btn btn--go" onclick={copyImage} disabled={!imageBlob}>Copy image</button>
-        <button class="btn" onclick={downloadPng} disabled={!imageBlob}>Download PNG</button>
-        <button class="btn" onclick={copyLink}>Copy link</button>
-        <button class="btn btn--x" onclick={shareToX} aria-label="Share to X">
+        <button class="btn btn--go" onclick={copyImage} disabled={!imageBlob}>{t.copyImage}</button>
+        <button class="btn" onclick={downloadPng} disabled={!imageBlob}>{t.downloadPng}</button>
+        <button class="btn" onclick={copyLink}>{t.copyLink}</button>
+        <button class="btn btn--x" onclick={shareToX} aria-label={t.shareToX}>
           <img src="/x-logo.svg" alt="" aria-hidden="true" />
         </button>
         {#if canNativeShare}
-          <button class="btn" onclick={nativeShare}>Share…</button>
+          <button class="btn" onclick={nativeShare}>{t.nativeShare}</button>
         {/if}
       </div>
 
@@ -503,36 +565,10 @@
   @font-face {
     font-family: 'Archivo';
     font-style: normal;
-    font-weight: 600;
-    font-stretch: expanded;
-    font-display: swap;
-    src: url('/fonts/archivo-expanded-600.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Archivo';
-    font-style: normal;
-    font-weight: 800;
-    font-stretch: expanded;
-    font-display: swap;
-    src: url('/fonts/archivo-expanded-800.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Archivo';
-    font-style: normal;
     font-weight: 900;
     font-stretch: expanded;
     font-display: swap;
-    src: url('/fonts/archivo-expanded-900.ttf') format('truetype');
-  }
-
-  @font-face {
-    font-family: 'Space Mono';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('/fonts/space-mono-400.ttf') format('truetype');
+    src: url('/fonts/archivo-expanded-900.woff2') format('woff2');
   }
 
   @font-face {
@@ -540,7 +576,7 @@
     font-style: normal;
     font-weight: 700;
     font-display: swap;
-    src: url('/fonts/space-mono-700.ttf') format('truetype');
+    src: url('/fonts/space-mono-700.woff2') format('woff2');
   }
 
   :global(body) {
@@ -562,9 +598,72 @@
   }
 
   main {
-    max-width: 920px;
+    /* Wider than the bracket so the longer localized wordmarks ("Copa del
+       Mundo 2026") keep "2026" on one line on larger screens. The bracket
+       itself is pinned back to its original width on `.board` below. */
+    max-width: 1040px;
     margin: 0 auto;
     padding: 1.25rem 1rem 2.5rem;
+  }
+
+  .lang-switch {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+  }
+  .lang-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.28rem 0.62rem 0.28rem 0.34rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    opacity: 0.72;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      opacity 0.15s ease,
+      transform 0.05s ease;
+  }
+  .lang-btn img {
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: inset 0 0 0 1px var(--line);
+    filter: saturate(0.45);
+    transition: filter 0.15s ease;
+  }
+  .lang-btn:hover {
+    opacity: 1;
+    background: rgba(26, 25, 22, 0.05);
+    border-color: rgba(26, 25, 22, 0.28);
+  }
+  .lang-btn:active {
+    transform: translateY(1px);
+  }
+  .lang-btn.active {
+    opacity: 1;
+    color: var(--ink);
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold-fill) 22%, transparent);
+  }
+  .lang-btn.active img {
+    filter: none;
+    box-shadow: 0 0 0 2px var(--gold);
+  }
+  .lang-btn:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
   }
 
   .masthead {
@@ -706,9 +805,8 @@
   .board {
     position: relative;
     width: 100%;
-  }
-  .board--loading {
-    aspect-ratio: 880 / 932;
+    max-width: 920px;
+    margin-inline: auto;
   }
 
   .node-button {

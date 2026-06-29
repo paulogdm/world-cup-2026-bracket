@@ -24,6 +24,10 @@
     interactive?: boolean;
     activePopoverNode?: string | null;
     flashing?: Set<string>;
+    /** Accessible label for the bracket group (localized by the caller). */
+    ariaLabel?: string;
+    /** Resolves a team's display name (localized by the caller). */
+    teamName?: (id: TeamId) => string;
   }
 
   let {
@@ -31,7 +35,9 @@
     idPrefix = '',
     interactive = true,
     activePopoverNode = null,
-    flashing = new Set<string>()
+    flashing = new Set<string>(),
+    ariaLabel = `${TITLE} bracket`,
+    teamName = (id: TeamId) => TEAMS[id].name
   }: Props = $props();
 
   const TROPHY_IMAGE_URL = '/world-cup-trophy.svg';
@@ -110,7 +116,7 @@
   class:bracket-svg--static={!interactive}
   viewBox="0 {BRACKET_TOP_CROP} {VW} {BRACKET_VIEW_HEIGHT}"
   role="group"
-  aria-label="{TITLE} bracket"
+  aria-label={ariaLabel}
 >
   {#each connectors as c}
     <path
@@ -222,20 +228,15 @@
         stroke-width={ringWidth(isChampSeat, isPicked, isChampionPick)}
       />
       {#if team && interactive}
+        {@const name = teamName(team)}
         <g
           class="country-popover"
           class:country-popover--visible={activePopoverNode === n.id}
           transform="translate(0,{-n.r - 18})"
         >
-          <rect
-            x={-TEAMS[team].name.length * 3.8 - 10}
-            y="-16"
-            width={TEAMS[team].name.length * 7.6 + 20}
-            height="24"
-            rx="12"
-          />
+          <rect x={-name.length * 3.8 - 10} y="-16" width={name.length * 7.6 + 20} height="24" rx="12" />
           <text text-anchor="middle" dominant-baseline="middle" y="-4">
-            {TEAMS[team].name}
+            {name}
           </text>
         </g>
       {/if}
