@@ -53,6 +53,8 @@
   const champNode = $derived(championNode(picks));
   const TROPHY_IMAGE_URL = '/world-cup-trophy.svg';
   const REPOSITORY_URL = 'https://github.com/paulogdm/world-cup-2026-bracket';
+  const BRACKET_TOP_CROP = 48;
+  const BRACKET_VIEW_HEIGHT = VH - BRACKET_TOP_CROP;
   const flagModules = import.meta.glob<string>(
     '/node_modules/flag-icons/flags/1x1/{ar,at,au,ba,be,br,ca,cd,ch,ci,co,cv,de,dz,ec,eg,es,fr,gb-eng,gh,hr,jp,ma,mx,nl,no,pt,py,se,sn,us,za}.svg',
     {
@@ -138,7 +140,7 @@
   function nodeButtonStyle(n: BracketNode): string {
     return [
       `--node-x: ${(n.x / VW) * 100}%`,
-      `--node-y: ${(n.y / VH) * 100}%`,
+      `--node-y: ${((n.y - BRACKET_TOP_CROP) / BRACKET_VIEW_HEIGHT) * 100}%`,
       `--node-size: ${((n.r * 2) / VW) * 100}%`
     ].join('; ');
   }
@@ -210,17 +212,13 @@
     <p class="eyebrow">Knockout predictor — USA · Canada · Mexico</p>
     <h1 class="wordmark">World Cup <span class="yr">2026</span></h1>
 
-    {#if champ}
-      <div class="readout" aria-live="polite">
+    <div class="readout" class:readout--empty={!champ} aria-live="polite">
+      {#if champ}
         <span class="readout__crown">Champions</span>
         <img class="readout__flag" src={flagUrl(champ)} alt="" aria-hidden="true" />
         <span class="readout__name">{TEAMS[champ].name}</span>
-      </div>
-
-      <p class="hint">
-        Bracket complete — share the link.
-      </p>
-    {/if}
+      {/if}
+    </div>
 
     <div class="actions">
       <button class="btn btn--go" onclick={share}>
@@ -237,7 +235,7 @@
   </header>
 
   <div class="board">
-    <svg viewBox="0 0 {VW} {VH}" role="group" aria-label="{TITLE} bracket">
+    <svg viewBox="0 {BRACKET_TOP_CROP} {VW} {BRACKET_VIEW_HEIGHT}" role="group" aria-label="{TITLE} bracket">
       {#each connectors as c}
         <path d={c.path} class="conn" />
       {/each}
@@ -439,7 +437,7 @@
 
   .masthead {
     text-align: center;
-    padding-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
   }
   .masthead > * {
     animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
@@ -488,17 +486,16 @@
     color: var(--gold);
     -webkit-text-stroke: 0;
   }
-  .wordmark + .actions {
-    margin-top: 1.15rem;
-  }
-
   .readout {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.55rem;
     min-height: 2.4rem;
-    margin-top: 0.85rem;
+    margin-block: 14px;
+  }
+  .readout--empty {
+    visibility: hidden;
   }
   .readout__crown {
     font-family: var(--mono);
@@ -525,15 +522,6 @@
     text-transform: uppercase;
     letter-spacing: 0.005em;
     color: var(--ink);
-  }
-
-  .hint {
-    margin: 0.45rem auto 1.1rem;
-    max-width: 30rem;
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    line-height: 1.5;
-    color: var(--muted);
   }
 
   .actions {
