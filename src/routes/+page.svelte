@@ -6,6 +6,7 @@
     connectors,
     getMatchById,
     matchById,
+    nodeById,
     CX,
     CY,
     VW,
@@ -29,10 +30,42 @@
   import { STRINGS } from '$lib/i18n/strings';
   import { localizedTeamName } from '$lib/i18n/team-names';
   import { i18n, initLocale } from '$lib/i18n/store.svelte';
+  import { scheduleFor, formatKickoff } from '$lib/bracket/schedule';
 
   // Current UI strings, reactive to the selected locale.
   const t = $derived(STRINGS[i18n.locale]);
   const teamName = (id: TeamId) => localizedTeamName(id, i18n.locale);
+
+  // Translated round label, derived from a match id (R32-09 → "Round of 32").
+  function roundLabel(matchId: string): string {
+    const code = matchId === 'F' ? 'F' : matchId.slice(0, matchId.indexOf('-'));
+    switch (code) {
+      case 'R32':
+        return t.roundOf32;
+      case 'R16':
+        return t.roundOf16;
+      case 'QF':
+        return t.quarterFinal;
+      case 'SF':
+        return t.semiFinal;
+      default:
+        return t.final;
+    }
+  }
+
+  // Translated host-country name for the schedule tooltip.
+  function countryLabel(country: string): string {
+    switch (country) {
+      case 'USA':
+        return t.countryUsa;
+      case 'Canada':
+        return t.countryCanada;
+      case 'Mexico':
+        return t.countryMexico;
+      default:
+        return country;
+    }
+  }
 
   // The real-world default state. Computed once so it can seed the prerendered
   // markup *and* be compared against on every URL sync (see below).
@@ -188,6 +221,50 @@
       `--node-size: ${((n.r * 2) / VW) * 100}%`
     ].join('; ');
   }
+
+  // Centre hover target for the Final — it has no seat node (the champion sits at
+  // the centre trophy), so anchor a button there to surface the Final's schedule.
+  const finalButtonStyle = [
+    `--node-x: 50%`,
+    `--node-y: ${((CY - BRACKET_TOP_CROP) / BRACKET_VIEW_HEIGHT) * 100}%`,
+    `--node-size: ${((92 / VW) * 100).toFixed(2)}%`
+  ].join('; ');
+
+  // Schedule tooltip for the currently hovered match node (or the Final). Leaf
+  // nodes (team flags) keep their country-name popover instead. All times format
+  // in the active locale: venue-local via the venue timezone, plus the viewer's
+  // own timezone.
+  const activeTip = $derived.by(() => {
+    const id = activePopoverNode;
+    if (!id) return null;
+    const s = scheduleFor(id);
+    if (!s) return null;
+    const locale = i18n.locale;
+    const pos =
+      id === 'F'
+        ? { x: 50, y: ((CY - BRACKET_TOP_CROP) / BRACKET_VIEW_HEIGHT) * 100 }
+        : (() => {
+            const n = nodeById(id);
+            return {
+              x: (n.x / VW) * 100,
+              y: ((n.y - BRACKET_TOP_CROP) / BRACKET_VIEW_HEIGHT) * 100
+            };
+          })();
+    const m = matchById(id);
+    const a = resolveTeam(m.a, picks);
+    const b = resolveTeam(m.b, picks);
+    const matchup = a && b ? `${teamName(a)} ${t.versus} ${teamName(b)}` : undefined;
+    return {
+      pos,
+      matchup,
+      round: roundLabel(id),
+      venue: formatKickoff(s.utc, locale, s.tzName),
+      yours: formatKickoff(s.utc, locale),
+      stadium: s.stadium,
+      city: s.city,
+      country: countryLabel(s.country)
+    };
+  });
 
   function pick(nodeId: string) {
     const result = applyPick(picks, nodeId);
@@ -372,7 +449,7 @@
             />
           {/if}
           <circle r={n.r} class="ring" class:empty={!team} class:filled={team} />
-          {#if team}
+          {#if team && n.kind === 'leaf'}
             {@const name = teamName(team)}
             <g
               class="country-popover"
@@ -390,22 +467,60 @@
     </svg>
     {#each allNodes as n (n.id)}
       {@const team = teamOf(n.id)}
-      {#if team}
+      {@const isMatch = n.kind === 'match'}
+      {#if team || isMatch}
         <button
           class="node-button"
+          class:node-button--info={!team}
           style={nodeButtonStyle(n)}
-          aria-label={t.pick(teamName(team))}
-          aria-pressed={n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side}
+          aria-label={team ? t.pick(teamName(team)) : t.matchInfo}
+          aria-pressed={team !== undefined
+            ? n.parentMatch !== undefined && n.side !== undefined && picks[n.parentMatch] === n.side
+            : undefined}
           onclick={() => pick(n.id)}
           onpointerenter={() => (activePopoverNode = n.id)}
           onpointerleave={() => activePopoverNode === n.id && (activePopoverNode = null)}
           onfocus={() => (activePopoverNode = n.id)}
           onblur={() => activePopoverNode === n.id && (activePopoverNode = null)}
         >
-          <span class="sr-only">{t.pick(teamName(team))}</span>
+          <span class="sr-only">{team ? t.pick(teamName(team)) : t.matchInfo}</span>
         </button>
       {/if}
     {/each}
+
+    {#if scheduleFor('F')}
+      <button
+        class="node-button node-button--info node-button--final"
+        style={finalButtonStyle}
+        aria-label={t.finalMatchInfo}
+        onpointerenter={() => (activePopoverNode = 'F')}
+        onpointerleave={() => activePopoverNode === 'F' && (activePopoverNode = null)}
+        onfocus={() => (activePopoverNode = 'F')}
+        onblur={() => activePopoverNode === 'F' && (activePopoverNode = null)}
+      >
+        <span class="sr-only">{t.finalMatchInfo}</span>
+      </button>
+    {/if}
+
+    {#if activeTip}
+      <div class="match-tip" style="left: {activeTip.pos.x}%; top: {activeTip.pos.y}%" role="status">
+        <span class="match-tip__round">{activeTip.round}</span>
+        {#if activeTip.matchup}
+          <span class="match-tip__teams">{activeTip.matchup}</span>
+        {/if}
+        {#if activeTip.venue}
+          <span class="match-tip__when"
+            >{activeTip.venue.date} · {activeTip.venue.time}
+            <span class="match-tip__tz">· {t.kickoffLocal}</span></span
+          >
+        {/if}
+        {#if activeTip.yours}
+          <span class="match-tip__you">{t.yourTime} · {activeTip.yours.date}, {activeTip.yours.time}</span>
+        {/if}
+        <span class="match-tip__where">{activeTip.stadium}</span>
+        <span class="match-tip__city">{activeTip.city} · {activeTip.country}</span>
+      </div>
+    {/if}
   </div>
 
   <footer class="site-footer">
@@ -667,6 +782,95 @@
   .node-button:focus-visible {
     outline: 3px solid var(--gold);
     outline-offset: 3px;
+  }
+  /* Match seats with no winner yet (and the Final) are hover-only: surface the
+     schedule without implying a pick. */
+  .node-button--info {
+    cursor: help;
+  }
+
+  .match-tip {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    transform: translate(-50%, calc(-100% - 14px));
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 9rem;
+    max-width: 14rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 10px;
+    background: var(--ink);
+    border: 1px solid rgba(242, 239, 228, 0.42);
+    box-shadow: 0 6px 18px rgba(26, 25, 22, 0.28);
+    color: var(--paper);
+    text-align: center;
+    pointer-events: none;
+    animation: tip-in 0.12s ease-out;
+  }
+  @keyframes tip-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, calc(-100% - 8px));
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .match-tip {
+      animation: none;
+    }
+  }
+  .match-tip::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    width: 9px;
+    height: 9px;
+    background: var(--ink);
+    border-right: 1px solid rgba(242, 239, 228, 0.42);
+    border-bottom: 1px solid rgba(242, 239, 228, 0.42);
+    transform: translateX(-50%) rotate(45deg);
+  }
+  .match-tip__round {
+    font-family: var(--mono);
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold-fill);
+  }
+  .match-tip__teams {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 0.82rem;
+    line-height: 1.05;
+    margin: 0.1rem 0 0.15rem;
+  }
+  .match-tip__when {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  .match-tip__tz {
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .match-tip__you {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--gold-fill);
+  }
+  .match-tip__where {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    margin-top: 0.15rem;
+  }
+  .match-tip__city {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: rgba(242, 239, 228, 0.7);
   }
 
   .sr-only {

@@ -1,0 +1,37 @@
+{
+  "R32-01": { "fifaMatch": 74, "round": "Round of 32", "utc": "2026-06-29T20:30:00Z", "tzName": "America/New_York", "stadium": "Gillette Stadium", "city": "Boston", "country": "USA" },
+  "R32-02": { "fifaMatch": 77, "round": "Round of 32", "utc": "2026-06-30T21:00:00Z", "tzName": "America/New_York", "stadium": "MetLife Stadium", "city": "New York/New Jersey", "country": "USA" },
+  "R32-03": { "fifaMatch": 73, "round": "Round of 32", "utc": "2026-06-28T19:00:00Z", "tzName": "America/Los_Angeles", "stadium": "SoFi Stadium", "city": "Los Angeles", "country": "USA" },
+  "R32-04": { "fifaMatch": 75, "round": "Round of 32", "utc": "2026-06-30T01:00:00Z", "tzName": "America/Monterrey", "stadium": "Estadio BBVA", "city": "Monterrey", "country": "Mexico" },
+  "R32-05": { "fifaMatch": 83, "round": "Round of 32", "utc": "2026-07-02T23:00:00Z", "tzName": "America/Toronto", "stadium": "BMO Field", "city": "Toronto", "country": "Canada" },
+  "R32-06": { "fifaMatch": 84, "round": "Round of 32", "utc": "2026-07-02T19:00:00Z", "tzName": "America/Los_Angeles", "stadium": "SoFi Stadium", "city": "Los Angeles", "country": "USA" },
+  "R32-07": { "fifaMatch": 81, "round": "Round of 32", "utc": "2026-07-02T00:00:00Z", "tzName": "America/Los_Angeles", "stadium": "Levi's Stadium", "city": "San Francisco Bay Area", "country": "USA" },
+  "R32-08": { "fifaMatch": 82, "round": "Round of 32", "utc": "2026-07-01T20:00:00Z", "tzName": "America/Los_Angeles", "stadium": "Lumen Field", "city": "Seattle", "country": "USA" },
+  "R32-09": { "fifaMatch": 76, "round": "Round of 32", "utc": "2026-06-29T17:00:00Z", "tzName": "America/Chicago", "stadium": "NRG Stadium", "city": "Houston", "country": "USA" },
+  "R32-10": { "fifaMatch": 78, "round": "Round of 32", "utc": "2026-06-30T17:00:00Z", "tzName": "America/Chicago", "stadium": "AT&T Stadium", "city": "Dallas", "country": "USA" },
+  "R32-11": { "fifaMatch": 79, "round": "Round of 32", "utc": "2026-07-01T01:00:00Z", "tzName": "America/Mexico_City", "stadium": "Estadio Azteca", "city": "Mexico City", "country": "Mexico" },
+  "R32-12": { "fifaMatch": 80, "round": "Round of 32", "utc": "2026-07-01T16:00:00Z", "tzName": "America/New_York", "stadium": "Mercedes-Benz Stadium", "city": "Atlanta", "country": "USA" },
+  "R32-13": { "fifaMatch": 86, "round": "Round of 32", "utc": "2026-07-03T22:00:00Z", "tzName": "America/New_York", "stadium": "Hard Rock Stadium", "city": "Miami", "country": "USA" },
+  "R32-14": { "fifaMatch": 88, "round": "Round of 32", "utc": "2026-07-03T18:00:00Z", "tzName": "America/Chicago", "stadium": "AT&T Stadium", "city": "Dallas", "country": "USA" },
+  "R32-15": { "fifaMatch": 85, "round": "Round of 32", "utc": "2026-07-03T03:00:00Z", "tzName": "America/Vancouver", "stadium": "BC Place", "city": "Vancouver", "country": "Canada" },
+  "R32-16": { "fifaMatch": 87, "round": "Round of 32", "utc": "2026-07-04T01:30:00Z", "tzName": "America/Chicago", "stadium": "Arrowhead Stadium", "city": "Kansas City", "country": "USA" },
+
+  "R16-01": { "fifaMatch": 89, "round": "Round of 16", "utc": "2026-07-04T21:00:00Z", "tzName": "America/New_York", "stadium": "Lincoln Financial Field", "city": "Philadelphia", "country": "USA" },
+  "R16-02": { "fifaMatch": 90, "round": "Round of 16", "utc": "2026-07-04T17:00:00Z", "tzName": "America/Chicago", "stadium": "NRG Stadium", "city": "Houston", "country": "USA" },
+  "R16-03": { "fifaMatch": 93, "round": "Round of 16", "utc": "2026-07-06T19:00:00Z", "tzName": "America/Chicago", "stadium": "AT&T Stadium", "city": "Dallas", "country": "USA" },
+  "R16-04": { "fifaMatch": 94, "round": "Round of 16", "utc": "2026-07-07T00:00:00Z", "tzName": "America/Los_Angeles", "stadium": "Lumen Field", "city": "Seattle", "country": "USA" },
+  "R16-05": { "fifaMatch": 91, "round": "Round of 16", "utc": "2026-07-05T20:00:00Z", "tzName": "America/New_York", "stadium": "MetLife Stadium", "city": "New York/New Jersey", "country": "USA" },
+  "R16-06": { "fifaMatch": 92, "round": "Round of 16", "utc": "2026-07-06T00:00:00Z", "tzName": "America/Mexico_City", "stadium": "Estadio Azteca", "city": "Mexico City", "country": "Mexico" },
+  "R16-07": { "fifaMatch": 95, "round": "Round of 16", "utc": "2026-07-07T16:00:00Z", "tzName": "America/New_York", "stadium": "Mercedes-Benz Stadium", "city": "Atlanta", "country": "USA" },
+  "R16-08": { "fifaMatch": 96, "round": "Round of 16", "utc": "2026-07-07T20:00:00Z", "tzName": "America/Vancouver", "stadium": "BC Place", "city": "Vancouver", "country": "Canada" },
+
+  "QF-01": { "fifaMatch": 97, "round": "Quarter-final", "utc": "2026-07-09T20:00:00Z", "tzName": "America/New_York", "stadium": "Gillette Stadium", "city": "Boston", "country": "USA" },
+  "QF-02": { "fifaMatch": 98, "round": "Quarter-final", "utc": "2026-07-10T19:00:00Z", "tzName": "America/Los_Angeles", "stadium": "SoFi Stadium", "city": "Los Angeles", "country": "USA" },
+  "QF-03": { "fifaMatch": 99, "round": "Quarter-final", "utc": "2026-07-11T21:00:00Z", "tzName": "America/New_York", "stadium": "Hard Rock Stadium", "city": "Miami", "country": "USA" },
+  "QF-04": { "fifaMatch": 100, "round": "Quarter-final", "utc": "2026-07-12T01:00:00Z", "tzName": "America/Chicago", "stadium": "Arrowhead Stadium", "city": "Kansas City", "country": "USA" },
+
+  "SF-01": { "fifaMatch": 101, "round": "Semi-final", "utc": "2026-07-14T19:00:00Z", "tzName": "America/Chicago", "stadium": "AT&T Stadium", "city": "Dallas", "country": "USA" },
+  "SF-02": { "fifaMatch": 102, "round": "Semi-final", "utc": "2026-07-15T19:00:00Z", "tzName": "America/New_York", "stadium": "Mercedes-Benz Stadium", "city": "Atlanta", "country": "USA" },
+
+  "F": { "fifaMatch": 104, "round": "Final", "utc": "2026-07-19T19:00:00Z", "tzName": "America/New_York", "stadium": "MetLife Stadium", "city": "New York/New Jersey", "country": "USA" }
+}
