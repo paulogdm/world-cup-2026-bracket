@@ -26,25 +26,35 @@
   import { TEAMS, type TeamId } from '$lib/bracket/teams';
   import { defaultResults, TITLE } from '$lib/bracket/config';
 
-  let picks = $state<Picks>({});
+  // The real-world default state. Computed once so it can seed the prerendered
+  // markup *and* be compared against on every URL sync (see below).
+  const DEFAULT_PICKS = picksFromResults(defaultResults);
+  const DEFAULT_ENCODED = encode(DEFAULT_PICKS);
+
+  // Seed with the default so the prerendered HTML already shows the real
+  // bracket (no empty-skeleton flash, and crawlers/no-JS get real content).
+  // A shared `?b=...` bracket is applied client-side in onMount.
+  let picks = $state<Picks>(DEFAULT_PICKS);
   let flashing = $state<Set<string>>(new Set());
   let ready = $state(false);
   let shareStatus = $state<'idle' | 'shared' | 'copied'>('idle');
   let activePopoverNode = $state<string | null>(null);
 
-  // Initial state: shared bracket from the URL, else the real-world default.
+  // Override the default with a shared bracket only when the URL carries one.
   onMount(() => {
     const b = new URLSearchParams(location.search).get('b');
-    picks = b ? decode(b) : picksFromResults(defaultResults);
+    if (b) picks = decode(b);
     ready = true;
   });
 
   // Keep the URL in sync with every change (replaceState = no history spam).
+  // The default state stays a bare URL — never pin a snapshot of it into `?b`,
+  // so the canonical link keeps tracking the redeployed defaults.
   $effect(() => {
     if (!ready) return;
     const b = encode(picks);
     const url = new URL(location.href);
-    if (b) url.searchParams.set('b', b);
+    if (b && b !== DEFAULT_ENCODED) url.searchParams.set('b', b);
     else url.searchParams.delete('b');
     history.replaceState(history.state, '', url);
   });
@@ -66,6 +76,14 @@
   const flagUrls = Object.fromEntries(
     Object.entries(flagModules).map(([path, url]) => [path.match(/\/([^/]+)\.svg$/)![1], url])
   ) as Record<TeamId, string>;
+
+  // The glob above lists the flag codes literally (a static-string requirement),
+  // so it can silently drift from teams.ts. Surface any gap loudly in dev; the
+  // `flags.test.ts` suite enforces the same invariant in CI.
+  if (import.meta.env.DEV) {
+    const missing = (Object.keys(TEAMS) as TeamId[]).filter((id) => !flagUrls[id]);
+    if (missing.length) console.error('[bracket] no flag asset for:', missing.join(', '));
+  }
 
   function flagUrl(team: TeamId): string {
     return flagUrls[team];
@@ -226,8 +244,7 @@
     </div>
   </header>
 
-  {#if ready}
-    <div class="board">
+  <div class="board">
     <svg viewBox="0 {BRACKET_TOP_CROP} {VW} {BRACKET_VIEW_HEIGHT}" role="group" aria-label="{TITLE} bracket">
       {#each connectors as c}
         <path d={c.path} class="conn" />
@@ -351,10 +368,7 @@
         </button>
       {/if}
     {/each}
-    </div>
-  {:else}
-    <div class="board board--loading" aria-busy="true" aria-label="Loading bracket"></div>
-  {/if}
+  </div>
 
   <footer class="site-footer">
     <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub</a>
@@ -557,9 +571,6 @@
   .board {
     position: relative;
     width: 100%;
-  }
-  .board--loading {
-    aspect-ratio: 880 / 932;
   }
 
   .node-button {
