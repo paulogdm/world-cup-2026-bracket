@@ -452,7 +452,10 @@
   }
 
   main {
-    max-width: 920px;
+    /* Wider than the bracket so the longer localized wordmarks ("Copa del
+       Mundo 2026") keep "2026" on one line on larger screens. The bracket
+       itself is pinned back to its original width on `.board` below. */
+    max-width: 1040px;
     margin: 0 auto;
     padding: 1.25rem 1rem 2.5rem;
   }
@@ -643,6 +646,8 @@
   .board {
     position: relative;
     width: 100%;
+    max-width: 920px;
+    margin-inline: auto;
   }
 
   .node-button {
