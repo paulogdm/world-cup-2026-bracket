@@ -212,14 +212,6 @@
     <p class="eyebrow">Knockout predictor — USA · Canada · Mexico</p>
     <h1 class="wordmark">World Cup <span class="yr">2026</span></h1>
 
-    <div class="readout" class:readout--empty={!champ} aria-live="polite">
-      {#if champ}
-        <span class="readout__crown">Champions</span>
-        <img class="readout__flag" src={flagUrl(champ)} alt="" aria-hidden="true" />
-        <span class="readout__name">{TEAMS[champ].name}</span>
-      {/if}
-    </div>
-
     <div class="actions">
       <button class="btn btn--go" onclick={share}>
         {shareStatus === 'shared' ? 'Shared' : shareStatus === 'copied' ? 'Link copied' : 'Share'}
@@ -486,49 +478,12 @@
     color: var(--gold);
     -webkit-text-stroke: 0;
   }
-  .readout {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.55rem;
-    min-height: 2.4rem;
-    margin-block: 14px;
-  }
-  .readout--empty {
-    visibility: hidden;
-  }
-  .readout__crown {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--gold);
-  }
-  .readout__flag {
-    width: 1.7em;
-    height: 1.7em;
-    border-radius: 50%;
-    object-fit: cover;
-    box-shadow:
-      0 0 0 2px var(--paper),
-      0 0 0 4px var(--gold-fill);
-  }
-  .readout__name {
-    font-family: var(--display);
-    font-weight: 800;
-    font-stretch: 125%;
-    font-size: 1.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.005em;
-    color: var(--ink);
-  }
-
   .actions {
     display: flex;
     gap: 0.5rem;
     justify-content: center;
     flex-wrap: wrap;
+    margin-top: clamp(1.1rem, 2.4vw, 1.7rem);
   }
   .btn {
     font-family: var(--mono);
