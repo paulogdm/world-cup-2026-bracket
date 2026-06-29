@@ -168,17 +168,15 @@
   }
 
   function shareText() {
-    const tieLabel = decided === 1 ? 'tie' : 'ties';
     return champ
-      ? `I picked ${TEAMS[champ].name} to win the ${TITLE}.`
-      : `I picked ${decided} ${tieLabel} in the ${TITLE} knockout predictor.`;
+      ? `Check my prediction: ${TEAMS[champ].name} will be champion! ${location.href}`
+      : `Check the interactive knockout stage here: ${location.href}`;
   }
 
   async function share() {
     const data = {
       title: TITLE,
-      text: shareText(),
-      url: location.href
+      text: shareText()
     };
 
     try {
@@ -186,7 +184,7 @@
         await navigator.share(data);
         shareStatus = 'shared';
       } else {
-        await navigator.clipboard.writeText(data.url);
+        await navigator.clipboard.writeText(data.text);
         shareStatus = 'copied';
       }
       setTimeout(() => (shareStatus = 'idle'), 1600);
@@ -198,11 +196,9 @@
   function shareToX() {
     const url = new URL('https://twitter.com/intent/tweet');
     url.searchParams.set('text', shareText());
-    url.searchParams.set('url', location.href);
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  const decided = $derived(Object.keys(picks).length);
 </script>
 
 <svelte:head>
@@ -214,25 +210,17 @@
     <p class="eyebrow">Knockout predictor — USA · Canada · Mexico</p>
     <h1 class="wordmark">World Cup <span class="yr">2026</span></h1>
 
-    <div class="readout" aria-live="polite">
-      {#if champ}
+    {#if champ}
+      <div class="readout" aria-live="polite">
         <span class="readout__crown">Champions</span>
         <img class="readout__flag" src={flagUrl(champ)} alt="" aria-hidden="true" />
         <span class="readout__name">{TEAMS[champ].name}</span>
-      {:else}
-        <span class="readout__num">{decided}</span>
-        <span class="readout__den">/ 31</span>
-        <span class="readout__tag">ties picked</span>
-      {/if}
-    </div>
+      </div>
 
-    <p class="hint">
-      {#if champ}
+      <p class="hint">
         Bracket complete — share the link.
-      {:else}
-        Pick the winner of every tie. Your bracket saves to the link.
-      {/if}
-    </p>
+      </p>
+    {/if}
 
     <div class="actions">
       <button class="btn btn--go" onclick={share}>
@@ -500,6 +488,9 @@
     color: var(--gold);
     -webkit-text-stroke: 0;
   }
+  .wordmark + .actions {
+    margin-top: 1.15rem;
+  }
 
   .readout {
     display: flex;
@@ -508,28 +499,6 @@
     gap: 0.55rem;
     min-height: 2.4rem;
     margin-top: 0.85rem;
-  }
-  .readout__num {
-    font-family: var(--display);
-    font-weight: 800;
-    font-stretch: 125%;
-    font-size: 1.75rem;
-    line-height: 1;
-    color: var(--ink);
-  }
-  .readout__den {
-    font-family: var(--mono);
-    font-size: 1rem;
-    color: var(--muted);
-  }
-  .readout__tag {
-    font-family: var(--mono);
-    font-size: 0.66rem;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-left: 0.35rem;
   }
   .readout__crown {
     font-family: var(--mono);
