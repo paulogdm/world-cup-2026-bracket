@@ -23,7 +23,7 @@ export const TITLE = 'World Cup 2026';
 export const defaultResults: Record<string, TeamId> = {
   // ── Round of 32 ──────────────────────────────────────────────────────────
   'R32-01': 'py', //     Paraguay           vs Germany ✅ Paraguay won
-  'R32-02': 'se', //     France             vs Sweden  ✅ Sweden won
+  'R32-02': 'fr', //     France             vs Sweden  ✅ France won
   'R32-03': 'ca', //     South Africa       vs Canada  ✅ Canada won
   'R32-04': 'ma', //     Netherlands        vs Morocco  ✅ Morocco won
   // 'R32-05': 'pt',     // Portugal        vs Croatia
