@@ -25,7 +25,7 @@ export const defaultResults: Record<string, TeamId> = {
   'R32-01': 'py', //     Paraguay           vs Germany ✅ Paraguay won
   // 'R32-02': 'fr',     // France          vs Sweden
   'R32-03': 'ca', //     South Africa       vs Canada  ✅ Canada won
-  // 'R32-04': 'nl',     // Netherlands     vs Morocco
+  'R32-04': 'nl', //     Netherlands        vs Morocco  ✅ Netherlands won
   // 'R32-05': 'pt',     // Portugal        vs Croatia
   // 'R32-06': 'es',     // Spain           vs Austria
   // 'R32-07': 'us',     // United States   vs Bosnia & Herzegovina
