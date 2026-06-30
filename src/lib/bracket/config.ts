@@ -31,7 +31,7 @@ export const defaultResults: Record<string, TeamId> = {
   // 'R32-07': 'us',     // United States   vs Bosnia & Herzegovina
   // 'R32-08': 'be',     // Senegal         vs Belgium
   'R32-09': 'br', //     Brazil             vs Japan  ✅ Brazil won
-  'R32-10': 'ci', //     Côte d'Ivoire      vs Norway  ✅ Côte d'Ivoire won
+  'R32-10': 'no', //     Côte d'Ivoire      vs Norway  ✅ Norway won
   // 'R32-11': 'mx',     // Mexico          vs Ecuador
   // 'R32-12': 'gb-eng', // England         vs DR Congo
   // 'R32-13': 'ar',     // Argentina       vs Cape Verde
