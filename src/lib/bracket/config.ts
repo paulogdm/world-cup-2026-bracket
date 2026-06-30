@@ -32,7 +32,8 @@ export const defaultResults: Record<string, TeamId> = {
   // 'R32-08': 'be',     // Senegal         vs Belgium
   'R32-09': 'br', //     Brazil             vs Japan  ✅ Brazil won
   'R32-10': 'no', //     Côte d'Ivoire      vs Norway  ✅ Norway won
-  // 'R32-11': 'mx',     // Mexico          vs Ecuador
+  // ⚠️  R32-11: match tonight Jun 30 — set winner ('mx' or 'ec') then remove this comment
+  'R32-11': 'mx', //     Mexico             vs Ecuador  🔜 TBD
   // 'R32-12': 'gb-eng', // England         vs DR Congo
   // 'R32-13': 'ar',     // Argentina       vs Cape Verde
   // 'R32-14': 'au',     // Australia       vs Egypt
