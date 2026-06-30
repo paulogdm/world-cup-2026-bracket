@@ -261,12 +261,20 @@
         stroke={ringStroke(team, isChampSeat, isPicked, isChampionPick, isContender)}
         stroke-width={ringWidth(isChampSeat, isPicked, isChampionPick, isContender)}
       />
-      {#if team && interactive}
+    </g>
+  {/each}
+
+  <!-- Popovers render in a second pass so they paint after every node group.
+       SVG ignores CSS z-index, so paint order is document order — keeping the
+       pill nested in its node let neighbouring circles drawn later occlude it. -->
+  {#if interactive}
+    {#each allNodes as n (n.id)}
+      {@const team = teamOf(n.id)}
+      {#if team && activePopoverNode === n.id}
         {@const name = teamName(team)}
         <g
-          class="country-popover"
-          class:country-popover--visible={activePopoverNode === n.id}
-          transform="translate(0,{-n.r - 18})"
+          class="country-popover country-popover--visible"
+          transform="translate({n.x},{n.y - n.r - 18})"
         >
           <rect x={-name.length * 3.8 - 10} y="-16" width={name.length * 7.6 + 20} height="24" rx="12" />
           <text text-anchor="middle" dominant-baseline="middle" y="-4">
@@ -274,8 +282,8 @@
           </text>
         </g>
       {/if}
-    </g>
-  {/each}
+    {/each}
+  {/if}
 </svg>
 
 <style>
