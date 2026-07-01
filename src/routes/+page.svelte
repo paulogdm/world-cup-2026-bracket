@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { pushState } from '$app/navigation';
+  import { page } from '$app/state';
 
   import BracketSvg from '$lib/bracket/BracketSvg.svelte';
   import { allNodes, matchById, finalChildren, VW, VH, type BracketNode } from '$lib/bracket/structure';
@@ -45,10 +47,6 @@
   const DEFAULT_PICKS = picksFromResults(defaultResults);
   const DEFAULT_ENCODED = encode(DEFAULT_PICKS);
 
-  // Seed with the default so the prerendered HTML already shows the real
-  // bracket (no empty-skeleton flash, and crawlers/no-JS get real content).
-  // A shared `?b=...` bracket is applied client-side in onMount.
-  let picks = $state<Picks>(DEFAULT_PICKS);
   let flashing = $state<Set<string>>(new Set());
   let ready = $state(false);
   let activePopoverNode = $state<string | null>(null);
@@ -58,6 +56,22 @@
   const resolvedTheme = $derived<'light' | 'dark'>(
     theme.value === 'system' ? (systemDark ? 'dark' : 'light') : theme.value
   );
+
+  // The bracket state lives in history, so the browser's Back/Forward buttons
+  // can replay it. Each edit pushes an entry whose encoded picks ride in
+  // `page.state.b`; shallow routing sets that on every edit and restores it on
+  // Back/Forward, and this derived decodes it — so history is the source of
+  // truth. `page.state` is used (not the `?b` query) because an empty bracket
+  // and the default both collapse to a bare URL, yet must stay distinct states.
+  // The initial entry has no `page.state` (a fresh load can't restore it), so
+  // there we fall back to the URL — which does disambiguate on first load
+  // (bare = default, `?b=...` = a shared bracket). Before hydration we render
+  // the default, matching the prerendered markup (no empty-skeleton flash).
+  const picks = $derived.by<Picks>(() => {
+    if (!ready) return DEFAULT_PICKS;
+    const b = page.state.b;
+    return b === undefined ? decodeUrl(page.url) : decode(b);
+  });
 
   type ShareStatus =
     | 'idle'
@@ -74,7 +88,7 @@
   let shareStatus = $state<ShareStatus>('idle');
   let imageUrl = $state<string | null>(null);
   let imageBlob = $state<Blob | null>(null);
-  let shareUrl = $state('');
+  const shareUrl = $derived(ready ? page.url.href : '');
   let canNativeShare = $state(false);
 
   let pendingBlob: Promise<Blob> | null = null;
@@ -104,9 +118,6 @@
   onMount(() => {
     initLocale();
     initTheme();
-    const b = new URLSearchParams(location.search).get('b');
-    if (b) picks = decode(b);
-    shareUrl = location.href;
     canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
     ready = true;
 
@@ -122,18 +133,33 @@
     document.documentElement.lang = LOCALE_META[i18n.locale].htmlLang;
   });
 
-  // Keep the URL in sync with every change (replaceState = no history spam).
-  // The default state stays a bare URL — never pin a snapshot of it into `?b`,
-  // so the canonical link keeps tracking the redeployed defaults.
-  $effect(() => {
-    if (!ready) return;
-    const b = encode(picks);
+  // The picks a shared/bookmarked URL represents (default when bare).
+  function decodeUrl(url: URL): Picks {
+    const b = url.searchParams.get('b');
+    return b ? decode(b) : DEFAULT_PICKS;
+  }
+
+  // Build the canonical share URL for a set of picks. The default state stays a
+  // bare URL — never pin a snapshot of it into `?b`, so the canonical/shared
+  // link keeps tracking the redeployed defaults. Any other query params kept.
+  function bracketUrl(next: Picks): URL {
+    const b = encode(next);
     const url = new URL(location.href);
     if (b && b !== DEFAULT_ENCODED) url.searchParams.set('b', b);
     else url.searchParams.delete('b');
-    history.replaceState(history.state, '', url);
-    shareUrl = url.href;
-  });
+    return url;
+  }
+
+  // Every edit becomes a history entry, so the browser Back/Forward buttons
+  // step through the picks one at a time. Shallow routing updates the URL for
+  // sharing and stores the exact encoding in `page.state`; since `picks` is
+  // derived from `page.state`, this push is the sole write path — Back/Forward
+  // just move through the entries and the bracket follows.
+  function commit(next: Picks) {
+    const b = encode(next);
+    if (b === encode(picks)) return; // no-op edit — don't stack a dupe entry
+    pushState(bracketUrl(next), { b });
+  }
 
   const champ = $derived(champion(picks));
   // Both finalists are set but the centre is still empty — everything else has
@@ -200,7 +226,7 @@
   function pick(nodeId: string) {
     const result = applyPick(picks, nodeId);
     if (!result) return;
-    picks = result.picks;
+    commit(result.picks);
 
     // Flash the nodes whose result was just invalidated.
     if (result.cleared.length) {
@@ -215,10 +241,10 @@
   }
 
   function clearAll() {
-    picks = {};
+    commit({});
   }
   function loadReal() {
-    picks = picksFromResults(defaultResults);
+    commit(picksFromResults(defaultResults));
   }
 
   function shareText() {
