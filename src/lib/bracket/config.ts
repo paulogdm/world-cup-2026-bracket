@@ -33,7 +33,7 @@ export const defaultResults: Record<string, TeamId> = {
   // 'R32-05': 'pt',    //  Portugal        vs Croatia         ends ~2026-07-03T01:00Z
   // 'R32-06': 'es',    //  Spain           vs Austria         ends ~2026-07-02T21:00Z
   // 'R32-07': 'us',    //  United States   vs Bosnia & Herz.  ends ~2026-07-02T02:00Z
-  // 'R32-08': 'be',    //  Senegal         vs Belgium         ends ~2026-07-01T22:00Z
+  'R32-08': 'sn',       //  Senegal         vs Belgium         ends ~2026-07-01T22:00Z  ✅ Senegal won
   'R32-09': 'br',       //  Brazil          vs Japan           ends ~2026-06-29T19:00Z  ✅ Brazil won
   'R32-10': 'no',       //  Côte d'Ivoire   vs Norway          ends ~2026-06-30T19:00Z  ✅ Norway won
   'R32-11': 'mx',       //  Mexico          vs Ecuador         ends ~2026-07-01T03:00Z  ✅ Mexico won
