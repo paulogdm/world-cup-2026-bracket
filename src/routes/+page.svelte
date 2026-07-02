@@ -88,7 +88,13 @@
   let shareStatus = $state<ShareStatus>('idle');
   let imageUrl = $state<string | null>(null);
   let imageBlob = $state<Blob | null>(null);
-  const shareUrl = $derived(ready ? page.url.href : '');
+  // Derive the share URL from the current picks, NOT from `page.url`. Shallow
+  // routing (`pushState`) only updates the address bar and `page.state`; it never
+  // reassigns `page.url`, so after any edit `page.url.href` is frozen at the URL
+  // the page loaded with — reading it here drops (or staled) the `?b=...` we just
+  // pushed, leaving the share image and copied link pointing at the wrong bracket.
+  // `bracketUrl` rebuilds from the live `location.href`, so it always matches.
+  const shareUrl = $derived(ready ? bracketUrl(picks).href : '');
   let canNativeShare = $state(false);
 
   let pendingBlob: Promise<Blob> | null = null;
