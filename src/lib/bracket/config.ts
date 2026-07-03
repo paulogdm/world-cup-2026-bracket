@@ -40,7 +40,7 @@ export const defaultResults: Record<string, TeamId> = {
   'R32-12': 'gb-eng',   //  England         vs DR Congo        ends ~2026-07-01T18:00Z  ✅ England won
   // 'R32-13': 'ar',    //  Argentina       vs Cape Verde      ends ~2026-07-04T00:00Z
   // 'R32-14': 'au',    //  Australia       vs Egypt           ends ~2026-07-03T20:00Z
-  // 'R32-15': 'ch',    //  Switzerland     vs Algeria         ends ~2026-07-03T05:00Z
+  'R32-15': 'ch',       //  Switzerland     vs Algeria         ends ~2026-07-03T05:00Z  ✅ Switzerland won
   // 'R32-16': 'co',    //  Ghana           vs Colombia        ends ~2026-07-04T03:30Z
 
   // ── Round of 16 ──────────────────────────────────────────────────────────
