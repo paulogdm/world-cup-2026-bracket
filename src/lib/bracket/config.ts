@@ -41,7 +41,7 @@ export const defaultResults: Record<string, TeamId> = {
   'R32-13': 'ar',       //  Argentina       vs Cape Verde      ends ~2026-07-04T00:00Z  ✅ Argentina won
   'R32-14': 'eg',       //  Australia       vs Egypt           ends ~2026-07-03T20:00Z  ✅ Egypt won
   'R32-15': 'ch',       //  Switzerland     vs Algeria         ends ~2026-07-03T05:00Z  ✅ Switzerland won
-  // 'R32-16': 'co',    //  Ghana           vs Colombia        ends ~2026-07-04T03:30Z
+  'R32-16': 'co',       //  Ghana           vs Colombia        ends ~2026-07-04T03:30Z  ✅ Colombia won
 
   // ── Round of 16 ──────────────────────────────────────────────────────────
   // 'R16-01': '',  // winner R32-01 vs winner R32-02
