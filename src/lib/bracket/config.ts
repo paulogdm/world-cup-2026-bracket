@@ -45,7 +45,7 @@ export const defaultResults: Record<string, TeamId> = {
 
   // ── Round of 16 ──────────────────────────────────────────────────────────
   // 'R16-01': '',  // winner R32-01 vs winner R32-02
-  // 'R16-02': '',  // winner R32-03 vs winner R32-04
+  'R16-02': 'ma',  // Canada vs Morocco   ends ~2026-07-04T19:00Z  ✅ Morocco won
   // 'R16-03': '',  // winner R32-05 vs winner R32-06
   // 'R16-04': '',  // winner R32-07 vs winner R32-08
   // 'R16-05': '',  // winner R32-09 vs winner R32-10
