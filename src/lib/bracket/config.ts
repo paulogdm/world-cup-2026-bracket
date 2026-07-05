@@ -48,7 +48,7 @@ export const defaultResults: Record<string, TeamId> = {
   'R16-02': 'ma',  // Canada vs Morocco   ends ~2026-07-04T19:00Z  ✅ Morocco won
   // 'R16-03': '',  // winner R32-05 vs winner R32-06
   // 'R16-04': '',  // winner R32-07 vs winner R32-08
-  'R16-05': 'br',  // Brazil vs Norway   ends ~2026-07-05T22:00Z  ✅ Brazil won
+  'R16-05': 'no',  // Brazil vs Norway   ends ~2026-07-05T22:00Z  ✅ Norway won
   // 'R16-06': '',  // winner R32-11 vs winner R32-12
   // 'R16-07': '',  // winner R32-13 vs winner R32-14
   // 'R16-08': '',  // winner R32-15 vs winner R32-16
