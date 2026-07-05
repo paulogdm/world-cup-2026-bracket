@@ -49,7 +49,7 @@ export const defaultResults: Record<string, TeamId> = {
   // 'R16-03': '',  // winner R32-05 vs winner R32-06
   // 'R16-04': '',  // winner R32-07 vs winner R32-08
   // 'R16-05': '',  // winner R32-09 vs winner R32-10
-  // 'R16-06': '',  // winner R32-11 vs winner R32-12
+  'R16-06': 'mx',  // Mexico vs England   ends ~2026-07-06T02:00Z  ✅ Mexico won
   // 'R16-07': '',  // winner R32-13 vs winner R32-14
   // 'R16-08': '',  // winner R32-15 vs winner R32-16
 
