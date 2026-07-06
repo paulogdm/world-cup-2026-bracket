@@ -46,7 +46,7 @@ export const defaultResults: Record<string, TeamId> = {
   // ── Round of 16 ──────────────────────────────────────────────────────────
   'R16-01': 'fr',  // Paraguay vs France   ends ~2026-07-04T23:00Z  ✅ France won
   'R16-02': 'ma',  // Canada vs Morocco   ends ~2026-07-04T19:00Z  ✅ Morocco won
-  // 'R16-03': '',  // winner R32-05 vs winner R32-06
+  'R16-03': 'es',  // Portugal vs Spain   plays 2026-07-06 (kickoff TBD)  ✅ Spain won
   // 'R16-04': '',  // winner R32-07 vs winner R32-08
   'R16-05': 'no',  // Brazil vs Norway   ends ~2026-07-05T22:00Z  ✅ Norway won
   'R16-06': 'gb-eng',  // Mexico vs England   ends ~2026-07-06T02:00Z  ✅ England won
