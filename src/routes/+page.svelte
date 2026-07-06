@@ -189,13 +189,12 @@
 
   const champ = $derived(champion(picks));
 
-  // A deliberately lopsided default (the ghost of 2014) so a freshly crowned
-  // champion shows a scoreline that begs to be edited, without pinning anything
-  // into the URL until the user actually touches it.
-  const DEFAULT_FINAL_SCORE: FinalScore = { champ: 7, loser: 1 };
+  // The scoreline a freshly crowned champion shows until the user adjusts it,
+  // without pinning anything into the URL until they actually touch it.
+  const DEFAULT_FINAL_SCORE: FinalScore = { champ: 1, loser: 0 };
 
   // What the editor shows: a crowned champion always presents a scoreline,
-  // defaulting to 7–1 until the user adjusts it (so a bare crown stays a bare
+  // defaulting to 1–0 until the user adjusts it (so a bare crown stays a bare
   // URL). No champion → nothing to predict.
   const finalScore = $derived<FinalScore | undefined>(
     champ ? (rawFinalScore ?? DEFAULT_FINAL_SCORE) : undefined
