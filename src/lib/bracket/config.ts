@@ -107,5 +107,6 @@ export const matchScores: Record<string, string> = {
 
   // ── Round of 16 ──────────────────────────────────────────────────────────
   'R16-01': '2-1', //  France beat Paraguay
-  'R16-02': '1-0' //  Morocco beat Canada
+  'R16-02': '1-0', //  Morocco beat Canada
+  'R16-05': '2-1' //  Norway beat Brazil (real result)
 };
