@@ -66,3 +66,46 @@ export const defaultResults: Record<string, TeamId> = {
   // ── Final ────────────────────────────────────────────────────────────────
   // 'F': ''       // winner SF-01 vs winner SF-02
 };
+
+// ───────────────────────────────────────────────────────────────────────────
+//  MATCH SCORES — the real final scores, kept for posterity.
+// ───────────────────────────────────────────────────────────────────────────
+//
+//  These are canonical, real-world results. Unlike winner picks, scores never
+//  travel in the shared `?b=...` URL (that encodes winners only) — they live
+//  only here. A score is drawn on the bracket ONLY while the match still shows
+//  the two teams that actually played it; if someone re-picks an earlier round
+//  so the matchup changes, its score hides rather than being stamped onto a
+//  pairing that never happened.
+//
+//  Format:   '<matchId>': '<winnerGoals>-<loserGoals>'   (full-time score)
+//  Write it winner-first — the winner is taken from `defaultResults` above, so
+//  the renderer knows which flag each number belongs to. A score with no
+//  recorded winner (or that doesn't match the current teams) is ignored.
+//
+//  NOTE: the values below are ILLUSTRATIVE placeholders consistent with the
+//  recorded winners — replace each with the real scoreline as it's confirmed.
+
+export const matchScores: Record<string, string> = {
+  // ── Round of 32 ──────────────────────────────────────────────────────────
+  'R32-01': '1-0', //  Paraguay beat Germany
+  'R32-02': '2-0', //  France beat Sweden
+  'R32-03': '2-1', //  Canada beat South Africa
+  'R32-04': '1-0', //  Morocco beat Netherlands
+  'R32-05': '3-1', //  Portugal beat Croatia
+  'R32-06': '2-0', //  Spain beat Austria
+  'R32-07': '1-0', //  United States beat Bosnia & Herz.
+  'R32-08': '2-1', //  Belgium beat Senegal
+  'R32-09': '3-0', //  Brazil beat Japan
+  'R32-10': '2-1', //  Norway beat Côte d'Ivoire
+  'R32-11': '2-1', //  Mexico beat Ecuador
+  'R32-12': '2-0', //  England beat DR Congo
+  'R32-13': '4-1', //  Argentina beat Cape Verde
+  'R32-14': '1-0', //  Egypt beat Australia
+  'R32-15': '1-0', //  Switzerland beat Algeria
+  'R32-16': '2-1', //  Colombia beat Ghana
+
+  // ── Round of 16 ──────────────────────────────────────────────────────────
+  'R16-01': '2-1', //  France beat Paraguay
+  'R16-02': '1-0' //  Morocco beat Canada
+};

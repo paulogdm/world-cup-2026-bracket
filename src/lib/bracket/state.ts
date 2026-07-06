@@ -29,18 +29,77 @@ export function championNode(picks: Picks): string | undefined {
   return p === undefined ? undefined : finalChildren[p];
 }
 
+// ---- predicted final score ----------------------------------------------
+// A user's guess at the grand-final scoreline. Stored relative to the crowned
+// team (never in team terms) with the invariant that the champion always
+// outscores the loser — a final must produce a winner, and the champion is
+// decided separately by the pick. Goals are capped so the value fits a small,
+// fixed magnitude appended to the pick codec below.
+
+export interface FinalScore {
+  champ: number; // goals for the crowned team — always the higher number
+  loser: number; // goals for the beaten finalist
+}
+
+export const GOAL_MAX = 20;
+const GOAL_SPAN = GOAL_MAX + 1; // 0..GOAL_MAX inclusive
+// Magnitude occupied by the 31 pick trits; the score is packed *above* it.
+const PICKS_RADIX = 3n ** BigInt(MATCH_ORDER.length);
+
+/** Clamp to the encodable range and enforce champion > loser. */
+export function clampFinalScore(fs: FinalScore): FinalScore {
+  const champ = Math.min(GOAL_MAX, Math.max(1, Math.round(fs.champ)));
+  const loser = Math.min(champ - 1, Math.max(0, Math.round(fs.loser)));
+  return { champ, loser };
+}
+
+function scoreToCode(fs: FinalScore | undefined): bigint {
+  if (!fs) return 0n; // 0 = no prediction
+  const { champ, loser } = clampFinalScore(fs);
+  return BigInt(1 + champ * GOAL_SPAN + loser);
+}
+
 // ---- querystring codec --------------------------------------------------
 // Each match is a base-3 digit: 0 = undecided, 1 = top won, 2 = bottom won.
-// Packed little-endian into a BigInt, serialised as base-36.
+// Packed little-endian into a BigInt, serialised as base-36. An optional
+// predicted final score rides in the magnitude *above* the pick trits, so an
+// old link (or an older client) simply sees no score and is otherwise
+// unaffected — the pick decode reads only the low 31 digits.
 
-export function encode(picks: Picks): string {
+export function encode(picks: Picks, finalScore?: FinalScore): string {
   let v = 0n;
   for (let i = MATCH_ORDER.length - 1; i >= 0; i--) {
     const p = picks[MATCH_ORDER[i]];
     const digit = p === undefined ? 0n : BigInt(p + 1);
     v = v * 3n + digit;
   }
+  v += scoreToCode(finalScore) * PICKS_RADIX;
   return v === 0n ? '' : v.toString(36);
+}
+
+function parseBase36(s: string): bigint | null {
+  let v = 0n;
+  for (const ch of s) {
+    const d = parseInt(ch, 36);
+    if (Number.isNaN(d)) return null;
+    v = v * 36n + BigInt(d);
+  }
+  return v;
+}
+
+/** The predicted final score packed into an encoded string, if any. */
+export function decodeFinalScore(s: string): FinalScore | undefined {
+  if (!s) return undefined;
+  const v = parseBase36(s);
+  if (v === null) return undefined;
+  const code = v / PICKS_RADIX; // integer division drops the pick trits
+  if (code === 0n) return undefined;
+  const n = Number(code) - 1;
+  const champ = Math.floor(n / GOAL_SPAN);
+  const loser = n % GOAL_SPAN;
+  // Reject a tampered magnitude that violates the champion-wins invariant.
+  if (champ < 1 || champ > GOAL_MAX || loser >= champ) return undefined;
+  return { champ, loser };
 }
 
 export function decode(s: string): Picks {

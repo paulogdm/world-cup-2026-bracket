@@ -4,8 +4,11 @@ import { MATCH_ORDER, matchById, nodeById } from './structure';
 import {
   applyPick,
   champion,
+  clampFinalScore,
   decode,
+  decodeFinalScore,
   encode,
+  GOAL_MAX,
   picksFromResults,
   resolveTeam,
   sanitize,
@@ -100,6 +103,54 @@ describe('golden codec vectors', () => {
       expect(encode(picks)).toBe(encoded);
     });
   }
+});
+
+describe('final-score codec', () => {
+  const allSides = (side: 0 | 1): Picks =>
+    Object.fromEntries(MATCH_ORDER.map((id) => [id, side]));
+
+  it('leaves the encoding untouched when no score is given (backward compatible)', () => {
+    const picks = allSides(0);
+    expect(encode(picks)).toBe('31h1mc59ud'); // the golden picks-only vector
+    expect(encode(picks, undefined)).toBe(encode(picks));
+  });
+
+  it('round-trips a predicted score through the encoded string', () => {
+    const picks = allSides(0);
+    for (const score of [
+      { champ: 1, loser: 0 },
+      { champ: 3, loser: 1 },
+      { champ: GOAL_MAX, loser: GOAL_MAX - 1 }
+    ]) {
+      const s = encode(picks, score);
+      expect(decodeFinalScore(s)).toEqual(score);
+      // The score must not disturb the picks it rides alongside.
+      expect(decode(s)).toEqual(picks);
+    }
+  });
+
+  it('pins the golden vector for the top-wins bracket with a 3–1 final', () => {
+    expect(encode(allSides(0), { champ: 3, loser: 1 })).toBe('b2d0wa76tj4');
+    expect(decodeFinalScore('b2d0wa76tj4')).toEqual({ champ: 3, loser: 1 });
+  });
+
+  it('reports no score for a bare or picks-only string', () => {
+    expect(decodeFinalScore('')).toBeUndefined();
+    expect(decodeFinalScore('31h1mc59ud')).toBeUndefined();
+    expect(decodeFinalScore('!!!')).toBeUndefined();
+  });
+
+  it('clamps to the champion-wins invariant and the goal cap', () => {
+    expect(clampFinalScore({ champ: 2, loser: 2 })).toEqual({ champ: 2, loser: 1 });
+    expect(clampFinalScore({ champ: 0, loser: 0 })).toEqual({ champ: 1, loser: 0 });
+    expect(clampFinalScore({ champ: 999, loser: 5 })).toEqual({ champ: GOAL_MAX, loser: 5 });
+    expect(clampFinalScore({ champ: 3, loser: -4 })).toEqual({ champ: 3, loser: 0 });
+  });
+
+  it('encoding clamps an out-of-range score the same way', () => {
+    const picks = allSides(0);
+    expect(decodeFinalScore(encode(picks, { champ: 2, loser: 2 }))).toEqual({ champ: 2, loser: 1 });
+  });
 });
 
 describe('decode robustness', () => {
