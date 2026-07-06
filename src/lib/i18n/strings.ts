@@ -74,10 +74,25 @@ export interface Strings {
   imageDownloaded: string;
   /** Status: image couldn't be built but the link still works. */
   imageUnavailable: string;
-  /** Export-card label above the champion's name. */
-  predictedChampion: string;
+  /** Export-card headline for the crowned champion, e.g. "Brazil wins!". */
+  championWins: (name: string) => string;
   /** Export-card caption when no champion is decided yet. */
   bracketSoFar: string;
+  // ── Final-score predictor ────────────────────────────────────────────────
+  /** Label above the grand-final score stepper. */
+  finalScoreLabel: string;
+  /** Accessible label for a team's goal stepper, e.g. "Goals for Brazil". */
+  goalsFor: (name: string) => string;
+  /** Accessible label for the increment button. */
+  addGoal: string;
+  /** Accessible label for the decrement button. */
+  removeGoal: string;
+  /** Button that confirms the score and collapses the predictor. */
+  finalScoreDone: string;
+  /** Accessible label for the collapsed chip that reopens the predictor. */
+  editFinalScore: string;
+  /** Share message when a champion is crowned and a final score is predicted. */
+  shareChampionScore: (name: string, score: string) => string;
 }
 
 export const STRINGS: Record<Locale, Strings> = {
@@ -122,8 +137,15 @@ export const STRINGS: Record<Locale, Strings> = {
     imageCopied: 'Image copied',
     imageDownloaded: 'Image downloaded',
     imageUnavailable: 'Image unavailable — link still works',
-    predictedChampion: 'Predicted champion',
-    bracketSoFar: 'My bracket so far'
+    championWins: (name) => `${name} wins!`,
+    bracketSoFar: 'My bracket so far',
+    finalScoreLabel: 'Predict the final score',
+    goalsFor: (name) => `Goals for ${name}`,
+    addGoal: 'Add a goal',
+    removeGoal: 'Remove a goal',
+    finalScoreDone: 'OK',
+    editFinalScore: 'Edit the final score',
+    shareChampionScore: (name, score) => `Check my prediction: ${name} wins the final ${score} to be champion!`
   },
   'pt-BR': {
     langLabel: 'Idioma',
@@ -166,8 +188,15 @@ export const STRINGS: Record<Locale, Strings> = {
     imageCopied: 'Imagem copiada',
     imageDownloaded: 'Imagem baixada',
     imageUnavailable: 'Imagem indisponível — o link funciona',
-    predictedChampion: 'Campeão previsto',
-    bracketSoFar: 'Meu chaveamento até agora'
+    championWins: (name) => `${name} vence!`,
+    bracketSoFar: 'Meu chaveamento até agora',
+    finalScoreLabel: 'Palpite o placar da final',
+    goalsFor: (name) => `Gols de ${name}`,
+    addGoal: 'Adicionar gol',
+    removeGoal: 'Remover gol',
+    finalScoreDone: 'OK',
+    editFinalScore: 'Editar o placar da final',
+    shareChampionScore: (name, score) => `Veja meu palpite: ${name} vence a final por ${score} e é campeão!`
   },
   es: {
     langLabel: 'Idioma',
@@ -210,7 +239,14 @@ export const STRINGS: Record<Locale, Strings> = {
     imageCopied: 'Imagen copiada',
     imageDownloaded: 'Imagen descargada',
     imageUnavailable: 'Imagen no disponible — el enlace funciona',
-    predictedChampion: 'Campeón previsto',
-    bracketSoFar: 'Mi cuadro hasta ahora'
+    championWins: (name) => `¡${name} gana!`,
+    bracketSoFar: 'Mi cuadro hasta ahora',
+    finalScoreLabel: 'Pronostica el marcador de la final',
+    goalsFor: (name) => `Goles de ${name}`,
+    addGoal: 'Añadir gol',
+    removeGoal: 'Quitar gol',
+    finalScoreDone: 'OK',
+    editFinalScore: 'Editar el marcador de la final',
+    shareChampionScore: (name, score) => `Mira mi pronóstico: ¡${name} gana la final ${score} y es campeón!`
   }
 };

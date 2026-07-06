@@ -7,12 +7,17 @@
   import { allNodes, matchById, finalChildren, VW, VH, type BracketNode } from '$lib/bracket/structure';
   import {
     champion,
+    championNode,
     encode,
     decode,
+    decodeFinalScore,
+    clampFinalScore,
+    GOAL_MAX,
     applyPick,
     picksFromResults,
     resolveTeam,
-    type Picks
+    type Picks,
+    type FinalScore
   } from '$lib/bracket/state';
   import { TEAMS, type TeamId } from '$lib/bracket/teams';
   import { defaultResults } from '$lib/bracket/config';
@@ -50,6 +55,9 @@
   let flashing = $state<Set<string>>(new Set());
   let ready = $state(false);
   let activePopoverNode = $state<string | null>(null);
+  // Whether the grand-final score predictor is expanded (steppers) or collapsed
+  // to a compact score chip. UI-only — not part of the shared bracket.
+  let scoreEditorOpen = $state(true);
   // Tracks the OS preference so a `system` theme resolves to a concrete
   // light/dark for the rasterised export (which can't read `light-dark()`).
   let systemDark = $state(false);
@@ -73,6 +81,17 @@
     return b === undefined ? decodeUrl(page.url) : decode(b);
   });
 
+  // The explicitly-predicted final score packed in the URL, if the sharer set
+  // one. Read from the same source as `picks` so it rides the same history
+  // entry. `finalScore` (the display value, defaulting to 1–0 for a crowned
+  // champion) is derived further down, once `champ` is known.
+  const rawFinalScore = $derived.by<FinalScore | undefined>(() => {
+    if (!ready) return undefined;
+    const b = page.state.b;
+    const s = b === undefined ? (page.url.searchParams.get('b') ?? '') : b;
+    return decodeFinalScore(s);
+  });
+
   type ShareStatus =
     | 'idle'
     | 'generating'
@@ -94,7 +113,7 @@
   // the page loaded with — reading it here drops (or staled) the `?b=...` we just
   // pushed, leaving the share image and copied link pointing at the wrong bracket.
   // `bracketUrl` rebuilds from the live `location.href`, so it always matches.
-  const shareUrl = $derived(ready ? bracketUrl(picks).href : '');
+  const shareUrl = $derived(ready ? bracketUrl(picks, rawFinalScore).href : '');
   let canNativeShare = $state(false);
 
   let pendingBlob: Promise<Blob> | null = null;
@@ -145,11 +164,12 @@
     return b ? decode(b) : DEFAULT_PICKS;
   }
 
-  // Build the canonical share URL for a set of picks. The default state stays a
-  // bare URL — never pin a snapshot of it into `?b`, so the canonical/shared
-  // link keeps tracking the redeployed defaults. Any other query params kept.
-  function bracketUrl(next: Picks): URL {
-    const b = encode(next);
+  // Build the canonical share URL for a set of picks (+ optional predicted final
+  // score). The default state stays a bare URL — never pin a snapshot of it into
+  // `?b`, so the canonical/shared link keeps tracking the redeployed defaults.
+  // Any other query params kept.
+  function bracketUrl(next: Picks, score?: FinalScore): URL {
+    const b = encode(next, score);
     const url = new URL(location.href);
     if (b && b !== DEFAULT_ENCODED) url.searchParams.set('b', b);
     else url.searchParams.delete('b');
@@ -161,13 +181,51 @@
   // sharing and stores the exact encoding in `page.state`; since `picks` is
   // derived from `page.state`, this push is the sole write path — Back/Forward
   // just move through the entries and the bracket follows.
-  function commit(next: Picks) {
-    const b = encode(next);
-    if (b === encode(picks)) return; // no-op edit — don't stack a dupe entry
-    pushState(bracketUrl(next), { b });
+  function commitState(next: Picks, score: FinalScore | undefined) {
+    const b = encode(next, score);
+    if (b === encode(picks, rawFinalScore)) return; // no-op edit — no dupe entry
+    pushState(bracketUrl(next, score), { b });
   }
 
   const champ = $derived(champion(picks));
+
+  // The scoreline a freshly crowned champion shows until the user adjusts it,
+  // without pinning anything into the URL until they actually touch it.
+  const DEFAULT_FINAL_SCORE: FinalScore = { champ: 1, loser: 0 };
+
+  // What the editor shows: a crowned champion always presents a scoreline,
+  // defaulting to 1–0 until the user adjusts it (so a bare crown stays a bare
+  // URL). No champion → nothing to predict.
+  const finalScore = $derived<FinalScore | undefined>(
+    champ ? (rawFinalScore ?? DEFAULT_FINAL_SCORE) : undefined
+  );
+
+  // The two finalists in bracket order (left half, right half) so the editor
+  // mirrors the board instead of always putting the winner first. The score is
+  // stored champion-relative, so we map it onto sides for display.
+  const leftFinalist = $derived<TeamId | undefined>(resolveTeam(finalChildren[0], picks));
+  const rightFinalist = $derived<TeamId | undefined>(resolveTeam(finalChildren[1], picks));
+  const championIsLeft = $derived(championNode(picks) === finalChildren[0]);
+  const leftGoals = $derived(
+    finalScore ? (championIsLeft ? finalScore.champ : finalScore.loser) : 0
+  );
+  const rightGoals = $derived(
+    finalScore ? (championIsLeft ? finalScore.loser : finalScore.champ) : 0
+  );
+
+  function setFinalScore(next: FinalScore) {
+    commitState(picks, clampFinalScore(next));
+  }
+  // Set from on-screen side goals; whichever side is the champion stays higher.
+  function setSideGoals(left: number, right: number) {
+    setFinalScore(championIsLeft ? { champ: left, loser: right } : { champ: right, loser: left });
+  }
+  function bumpLeft(delta: number) {
+    setSideGoals(leftGoals + delta, rightGoals);
+  }
+  function bumpRight(delta: number) {
+    setSideGoals(leftGoals, rightGoals + delta);
+  }
   // Both finalists are set but the centre is still empty — everything else has
   // been filled, so nudge the user to crown the champion (the easy step to miss).
   const needsChampion = $derived(
@@ -232,7 +290,10 @@
   function pick(nodeId: string) {
     const result = applyPick(picks, nodeId);
     if (!result) return;
-    commit(result.picks);
+    // Keep an explicitly-set final score only while a champion still stands;
+    // clearing/changing the final drops the prediction with it.
+    const keepScore = champion(result.picks) ? rawFinalScore : undefined;
+    commitState(result.picks, keepScore);
 
     // Flash the nodes whose result was just invalidated.
     if (result.cleared.length) {
@@ -247,14 +308,20 @@
   }
 
   function clearAll() {
-    commit({});
+    commitState({}, undefined);
   }
   function loadReal() {
-    commit(picksFromResults(defaultResults));
+    commitState(picksFromResults(defaultResults), undefined);
   }
 
   function shareText() {
-    const message = champ ? t.shareChampion(teamName(champ)) : t.shareGeneric;
+    let message = t.shareGeneric;
+    if (champ) {
+      const name = teamName(champ);
+      message = finalScore
+        ? t.shareChampionScore(name, `${finalScore.champ}–${finalScore.loser}`)
+        : t.shareChampion(name);
+    }
     return `${message} ${shareUrl}`;
   }
 
@@ -567,6 +634,74 @@
         </span>
       </div>
     {/if}
+
+    <!-- Predict the grand-final scoreline. Only shown once a champion is
+         crowned. The two finalists keep their bracket sides (left half / right
+         half); whichever side holds the champion is constrained to the higher
+         number (a final must have a winner, and the pick already chose it). -->
+    {#if champ && finalScore && leftFinalist && rightFinalist}
+      {@const left = leftFinalist}
+      {@const right = rightFinalist}
+      {#if scoreEditorOpen}
+        <div class="score-predict" role="group" aria-label={t.finalScoreLabel}>
+          <span class="score-predict__label">{t.finalScoreLabel}</span>
+          <div class="score-predict__row">
+            <div class="score-predict__side">
+              <img class="score-predict__flag" src={flagUrl(left)} alt="" />
+              <div class="stepper" role="group" aria-label={t.goalsFor(teamName(left))}>
+                <button
+                  class="stepper__btn"
+                  onclick={() => bumpLeft(-1)}
+                  disabled={championIsLeft ? leftGoals <= rightGoals + 1 : leftGoals <= 0}
+                  aria-label={t.removeGoal}
+                >−</button>
+                <span class="stepper__val">{leftGoals}</span>
+                <button
+                  class="stepper__btn"
+                  onclick={() => bumpLeft(1)}
+                  disabled={championIsLeft ? leftGoals >= GOAL_MAX : leftGoals >= rightGoals - 1}
+                  aria-label={t.addGoal}
+                >+</button>
+              </div>
+            </div>
+            <span class="score-predict__sep" aria-hidden="true">:</span>
+            <div class="score-predict__side">
+              <div class="stepper" role="group" aria-label={t.goalsFor(teamName(right))}>
+                <button
+                  class="stepper__btn"
+                  onclick={() => bumpRight(-1)}
+                  disabled={championIsLeft ? rightGoals <= 0 : rightGoals <= leftGoals + 1}
+                  aria-label={t.removeGoal}
+                >−</button>
+                <span class="stepper__val">{rightGoals}</span>
+                <button
+                  class="stepper__btn"
+                  onclick={() => bumpRight(1)}
+                  disabled={championIsLeft ? rightGoals >= leftGoals - 1 : rightGoals >= GOAL_MAX}
+                  aria-label={t.addGoal}
+                >+</button>
+              </div>
+              <img class="score-predict__flag" src={flagUrl(right)} alt="" />
+            </div>
+          </div>
+          <button class="score-predict__ok" onclick={() => (scoreEditorOpen = false)}>
+            {t.finalScoreDone}
+          </button>
+        </div>
+      {:else}
+        <button
+          class="score-predict score-predict--chip"
+          onclick={() => (scoreEditorOpen = true)}
+          aria-label="{t.editFinalScore}: {teamName(left)} {leftGoals}, {teamName(
+            right
+          )} {rightGoals}"
+        >
+          <span class="score-chip__val" aria-hidden="true">
+            {leftGoals}<span class="score-chip__sep">–</span>{rightGoals}
+          </span>
+        </button>
+      {/if}
+    {/if}
   </div>
 
   <footer class="site-footer">
@@ -593,10 +728,10 @@
           {#if champ}
             <div class="export-card__champ">
               <img class="export-card__champ-flag" src={flagUrl(champ)} alt="" />
-              <div class="export-card__champ-text">
-                <span class="export-card__champ-label">{t.predictedChampion}</span>
-                <span class="export-card__champ-name">{teamName(champ)}</span>
-              </div>
+              <span class="export-card__champ-name">{t.championWins(teamName(champ))}</span>
+              {#if finalScore}
+                <span class="export-card__champ-score">{finalScore.champ}–{finalScore.loser}</span>
+              {/if}
             </div>
           {:else}
             <p class="export-card__neutral">{t.bracketSoFar}</p>
@@ -987,6 +1122,179 @@
     }
   }
 
+  /* Grand-final score predictor — sits just below the crowned champion flag at
+     the centre of the board. */
+  .score-predict {
+    position: absolute;
+    z-index: 4;
+    left: 50%;
+    /* Below the crowned champion flag (its bottom edge is ~52%), with a small
+       gap, sitting in the open central band that runs clear down to the lower
+       ring of flags. */
+    top: 55%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    box-shadow: 0 6px 18px rgba(26, 25, 22, 0.22);
+    backdrop-filter: blur(3px);
+    animation: hint-in 0.3s ease backwards;
+  }
+  .score-predict__label {
+    font-family: var(--mono);
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .score-predict__row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  .score-predict__side {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .score-predict__flag {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: inset 0 0 0 1.5px var(--gold);
+  }
+  .score-predict__sep {
+    font-family: var(--display);
+    font-weight: 900;
+    color: var(--muted);
+  }
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .stepper__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      border-color 0.12s ease,
+      transform 0.05s ease;
+  }
+  .stepper__btn:hover:not(:disabled) {
+    background: var(--hover-bg);
+    border-color: var(--gold);
+  }
+  .stepper__btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .stepper__btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .stepper__btn:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .stepper__val {
+    min-width: 1.1rem;
+    text-align: center;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .score-predict__ok {
+    margin-top: 0.1rem;
+    padding: 0.28rem 1.1rem;
+    border: 1px solid var(--gold);
+    border-radius: 999px;
+    background: var(--gold-fill);
+    color: #1a1916;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      transform 0.05s ease;
+  }
+  .score-predict__ok:hover {
+    background: var(--gold);
+  }
+  .score-predict__ok:active {
+    transform: translateY(1px);
+  }
+  .score-predict__ok:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  /* Collapsed resting state — the compact score, itself the button that
+     reopens the editor. */
+  .score-predict--chip {
+    flex-direction: row;
+    gap: 0;
+    padding: 0.28rem 0.85rem;
+    cursor: pointer;
+    font: inherit;
+    transition:
+      background 0.12s ease,
+      border-color 0.12s ease,
+      transform 0.05s ease;
+  }
+  .score-predict--chip:hover {
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold-fill) 16%, var(--paper));
+  }
+  .score-predict--chip:active {
+    transform: translateX(-50%) translateY(1px);
+  }
+  .score-predict--chip:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .score-chip__val {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .score-chip__sep {
+    margin: 0 0.12rem;
+    color: var(--muted);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .score-predict {
+      animation: none;
+    }
+  }
+
   .sr-only {
     position: absolute;
     width: 1px;
@@ -1238,20 +1546,6 @@
     object-fit: cover;
     border: 3px solid var(--gold);
   }
-  .export-card__champ-text {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    text-align: left;
-  }
-  .export-card__champ-label {
-    font-family: var(--mono);
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
   .export-card__champ-name {
     font-family: var(--display);
     font-weight: 900;
@@ -1259,6 +1553,22 @@
     text-transform: uppercase;
     font-size: 38px;
     line-height: 1;
+    white-space: nowrap;
+  }
+  .export-card__champ-score {
+    display: flex;
+    align-items: center;
+    /* Match the champion flag (60px circle + 3px ring) so the scoreline reads
+       as its counterweight. */
+    height: 66px;
+    font-family: var(--display);
+    font-weight: 900;
+    font-stretch: expanded;
+    font-size: 66px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
   }
   .export-card__neutral {
     margin: 0;

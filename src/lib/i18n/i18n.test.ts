@@ -40,7 +40,8 @@ describe('UI strings', () => {
       for (const key of keys) {
         const value = STRINGS[locale][key];
         if (typeof value === 'function') {
-          expect(value('X').length).toBeGreaterThan(0);
+          const fn = value as (...args: string[]) => string;
+          expect(fn('X', 'Y').length).toBeGreaterThan(0);
         } else {
           expect(value.length).toBeGreaterThan(0);
         }

@@ -13,6 +13,7 @@
     type Connector
   } from './structure';
   import { resolveTeam, champion, championNode, type Picks } from './state';
+  import { scoreLabelsFor } from './scores';
   import { type TeamId } from './teams';
   import { flagUrl, flagAccentColor } from './flags';
 
@@ -97,17 +98,25 @@
       champSeat: '#d9b34a',
       ringBase: '#2a2925',
       emptyFill: '#e9e5d8',
-      emptyStroke: '#b8b3a3'
+      emptyStroke: '#b8b3a3',
+      scoreBg: '#1a1916',
+      scoreInk: '#f2efe4'
     },
     dark: {
       gold: '#d8a93c',
       champSeat: '#e6c25c',
       ringBase: '#5f5a4e',
       emptyFill: '#232017',
-      emptyStroke: '#585346'
+      emptyStroke: '#585346',
+      scoreBg: '#ece7d6',
+      scoreInk: '#16140f'
     }
   } as const;
   const pal = $derived(PALETTE[theme]);
+
+  // Real match scores (posterity) as positioned labels; only played matches
+  // still showing their real teams get one.
+  const scoreLabels = $derived(scoreLabelsFor(picks));
 
   // A filled finalist still waiting to be crowned — the contender the user is
   // meant to choose between for the championship.
@@ -261,6 +270,26 @@
         stroke={ringStroke(team, isChampSeat, isPicked, isChampionPick, isContender)}
         stroke-width={ringWidth(isChampSeat, isPicked, isChampionPick, isContender)}
       />
+    </g>
+  {/each}
+
+  <!-- Real match scores, painted above the rings so they stay legible over the
+       flags and connectors. Only real, played matches (still showing their real
+       teams) get a label — kept for posterity. -->
+  {#each scoreLabels as s (s.matchId)}
+    {@const halfW = s.text.length * 3.1 + 5}
+    <g class="score" transform="translate({s.x},{s.y})">
+      <rect
+        x={-halfW}
+        y="-8.5"
+        width={halfW * 2}
+        height="17"
+        rx="8.5"
+        fill={pal.scoreBg}
+        stroke={pal.gold}
+        stroke-width="0.75"
+      />
+      <text text-anchor="middle" dominant-baseline="central" fill={pal.scoreInk}>{s.text}</text>
     </g>
   {/each}
 
@@ -440,6 +469,24 @@
   }
   .country-popover--visible {
     opacity: 1;
+  }
+
+  .score {
+    pointer-events: none;
+  }
+  .score rect {
+    fill: var(--ink);
+    stroke: var(--gold);
+    stroke-width: 0.75;
+    opacity: 0.92;
+    filter: drop-shadow(0 1px 2px rgba(26, 25, 22, 0.32));
+  }
+  .score text {
+    fill: var(--paper);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
   }
 
   .flash .ring {
