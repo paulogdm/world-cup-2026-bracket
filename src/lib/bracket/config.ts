@@ -78,35 +78,37 @@ export const defaultResults: Record<string, TeamId> = {
 //  so the matchup changes, its score hides rather than being stamped onto a
 //  pairing that never happened.
 //
-//  Format:   '<matchId>': '<winnerGoals>-<loserGoals>'   (full-time score)
-//  Write it winner-first — the winner is taken from `defaultResults` above, so
-//  the renderer knows which flag each number belongs to. A score with no
+//  Format:   '<matchId>': '<winnerGoals>-<loserGoals>'
+//  The score counts goals scored in play (90 min + extra time), written
+//  winner-first — the winner is taken from `defaultResults` above, so the
+//  renderer knows which flag each number belongs to. A match settled on
+//  penalties keeps its drawn scoreline (e.g. '1-1'), with the shootout noted in
+//  the comment; the winner still comes from `defaultResults`. A score with no
 //  recorded winner (or that doesn't match the current teams) is ignored.
 //
-//  NOTE: the values below are ILLUSTRATIVE placeholders consistent with the
-//  recorded winners — replace each with the real scoreline as it's confirmed.
+//  Real results, verified against FIFA, ESPN, Wikipedia and Al Jazeera reports.
 
 export const matchScores: Record<string, string> = {
   // ── Round of 32 ──────────────────────────────────────────────────────────
-  'R32-01': '1-0', //  Paraguay beat Germany
-  'R32-02': '2-0', //  France beat Sweden
-  'R32-03': '2-1', //  Canada beat South Africa
-  'R32-04': '1-0', //  Morocco beat Netherlands
-  'R32-05': '3-1', //  Portugal beat Croatia
-  'R32-06': '2-0', //  Spain beat Austria
-  'R32-07': '1-0', //  United States beat Bosnia & Herz.
-  'R32-08': '2-1', //  Belgium beat Senegal
-  'R32-09': '3-0', //  Brazil beat Japan
+  'R32-01': '1-1', //  Paraguay beat Germany (4-3 on penalties)
+  'R32-02': '3-0', //  France beat Sweden
+  'R32-03': '1-0', //  Canada beat South Africa
+  'R32-04': '1-1', //  Morocco beat Netherlands (3-2 on penalties)
+  'R32-05': '2-1', //  Portugal beat Croatia
+  'R32-06': '3-0', //  Spain beat Austria
+  'R32-07': '2-0', //  United States beat Bosnia & Herz.
+  'R32-08': '3-2', //  Belgium beat Senegal (after extra time)
+  'R32-09': '2-1', //  Brazil beat Japan
   'R32-10': '2-1', //  Norway beat Côte d'Ivoire
-  'R32-11': '2-1', //  Mexico beat Ecuador
-  'R32-12': '2-0', //  England beat DR Congo
-  'R32-13': '4-1', //  Argentina beat Cape Verde
-  'R32-14': '1-0', //  Egypt beat Australia
-  'R32-15': '1-0', //  Switzerland beat Algeria
-  'R32-16': '2-1', //  Colombia beat Ghana
+  'R32-11': '2-0', //  Mexico beat Ecuador
+  'R32-12': '2-1', //  England beat DR Congo
+  'R32-13': '3-2', //  Argentina beat Cape Verde (after extra time)
+  'R32-14': '1-1', //  Egypt beat Australia (4-2 on penalties)
+  'R32-15': '2-0', //  Switzerland beat Algeria
+  'R32-16': '1-0', //  Colombia beat Ghana
 
   // ── Round of 16 ──────────────────────────────────────────────────────────
-  'R16-01': '2-1', //  France beat Paraguay
-  'R16-02': '1-0', //  Morocco beat Canada
-  'R16-05': '2-1' //  Norway beat Brazil (real result)
+  'R16-01': '1-0', //  France beat Paraguay
+  'R16-02': '3-0', //  Morocco beat Canada
+  'R16-05': '2-1' //  Norway beat Brazil
 };
