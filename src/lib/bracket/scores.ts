@@ -28,6 +28,13 @@ function parse(raw: string): { winner: number; loser: number } | null {
 
 const EN_DASH = '–';
 
+/** The recorded final score of a match, winner-first (goals in play + extra
+    time), or null if no valid score is on record. Used by the detail card. */
+export function finalScoreFor(matchId: string): { winner: number; loser: number } | null {
+  const raw = matchScores[matchId];
+  return raw ? parse(raw) : null;
+}
+
 /** Positioned score labels for every real match still shown with its real teams. */
 export function scoreLabelsFor(picks: Picks): ScoreLabel[] {
   const labels: ScoreLabel[] = [];

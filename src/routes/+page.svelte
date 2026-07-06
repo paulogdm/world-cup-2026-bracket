@@ -5,6 +5,8 @@
 
   import BracketSvg from '$lib/bracket/BracketSvg.svelte';
   import { allNodes, matchById, finalChildren, VW, VH, type BracketNode } from '$lib/bracket/structure';
+  import { scoreLabelsFor, finalScoreFor, type ScoreLabel } from '$lib/bracket/scores';
+  import { matchDetailFor } from '$lib/bracket/match-details';
   import {
     champion,
     championNode,
@@ -122,6 +124,14 @@
   let dialogEl = $state<HTMLDivElement>();
   let closeBtn = $state<HTMLButtonElement>();
   let shareButton = $state<HTMLButtonElement>();
+
+  // Match detail card state. A score pill opens it; `detailMatchId` names the
+  // played match whose story to show. Only matchups with a pill can open it.
+  let detailMatchId = $state<string | null>(null);
+  let detailEl = $state<HTMLDivElement>();
+  let detailCloseBtn = $state<HTMLButtonElement>();
+  // Where to send focus when the card closes — the pill that opened it.
+  let detailReturnFocus: HTMLElement | null = null;
 
   const REPOSITORY_URL = 'https://github.com/paulogdm/world-cup-2026-bracket';
   const BRACKET_TOP_CROP = 48;
@@ -285,6 +295,144 @@
       `--node-y: ${((n.y - BRACKET_TOP_CROP) / BRACKET_VIEW_HEIGHT) * 100}%`,
       `--node-size: ${((n.r * 2) / VW) * 100}%`
     ].join('; ');
+  }
+
+  // Positioned score pills for the currently-shown bracket — the same labels the
+  // SVG draws, mirrored here so we can lay clickable buttons over them.
+  const scoreLabels = $derived<ScoreLabel[]>(scoreLabelsFor(picks));
+
+  // A transparent button sits over each pill; place and size it in board
+  // percentages, the same transform the flag node-buttons use.
+  function pillButtonStyle(s: ScoreLabel): string {
+    const halfW = s.text.length * 3.1 + 5; // mirrors the SVG pill's half-width
+    return [
+      `--pill-x: ${(s.x / VW) * 100}%`,
+      `--pill-y: ${((s.y - BRACKET_TOP_CROP) / BRACKET_VIEW_HEIGHT) * 100}%`,
+      `--pill-w: ${((halfW * 2) / VW) * 100}%`,
+      `--pill-h: ${(17 / BRACKET_VIEW_HEIGHT) * 100}%`
+    ].join('; ');
+  }
+
+  // The two real teams of a played match, winner first. Resolved against the
+  // canonical results so it's stable regardless of what the visitor has re-picked
+  // (a pill only shows while the real matchup stands, so both are always defined).
+  function matchTeams(matchId: string): { winner: TeamId; loser: TeamId } | null {
+    const winner = defaultResults[matchId];
+    if (!winner) return null;
+    const m = matchById(matchId);
+    const a = resolveTeam(m.a, DEFAULT_PICKS);
+    const b = resolveTeam(m.b, DEFAULT_PICKS);
+    const loser = a === winner ? b : a;
+    if (!loser) return null;
+    return { winner, loser };
+  }
+
+  // Format a kick-off instant in the visitor's own timezone and current UI
+  // locale. Only ever called from the (client-only) card, so there's no SSR
+  // hydration mismatch to worry about. `timeZone` is left to the browser default.
+  function formatKickoff(iso: string, locale: Locale): string {
+    try {
+      return new Intl.DateTimeFormat(locale, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      }).format(new Date(iso));
+    } catch {
+      return iso;
+    }
+  }
+
+  // The full model behind the open detail card, or null when none is open.
+  // Everything optional stays absent when unrecorded, so the card renders only
+  // the sections it actually has data for.
+  const detailCard = $derived.by(() => {
+    if (!detailMatchId) return null;
+    const teams = matchTeams(detailMatchId);
+    if (!teams) return null;
+    const score = finalScoreFor(detailMatchId);
+    const detail = matchDetailFor(detailMatchId);
+
+    const goals = detail?.goals?.map((g) => {
+      const team = g.team === 'winner' ? teams.winner : teams.loser;
+      return { team, scorer: g.scorer, minute: g.minute, penalty: g.penalty };
+    });
+
+    return {
+      matchId: detailMatchId,
+      winner: teams.winner,
+      loser: teams.loser,
+      winnerName: teamName(teams.winner),
+      loserName: teamName(teams.loser),
+      score,
+      venue: detail?.venue,
+      kickoff: detail?.kickoff,
+      extraTime: detail?.extraTime ?? false,
+      penalties: detail?.penalties,
+      goals
+    };
+  });
+
+  // Whether the open card has anything beyond the header (teams + score) to show.
+  const detailHasBody = $derived(
+    !!detailCard &&
+      (!!detailCard.venue ||
+        !!detailCard.kickoff ||
+        detailCard.extraTime ||
+        !!detailCard.penalties ||
+        (detailCard.goals?.length ?? 0) > 0)
+  );
+
+  function openDetail(matchId: string, event: MouseEvent | KeyboardEvent) {
+    detailReturnFocus = (event.currentTarget as HTMLElement) ?? null;
+    detailMatchId = matchId;
+  }
+
+  function closeDetail() {
+    detailMatchId = null;
+    detailReturnFocus?.focus();
+    detailReturnFocus = null;
+  }
+
+  // Focus the card when it opens.
+  $effect(() => {
+    if (detailMatchId && detailEl) (detailCloseBtn ?? detailEl).focus();
+  });
+
+  function detailFocusables(): HTMLElement[] {
+    if (!detailEl) return [];
+    return Array.from(
+      detailEl.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => el.offsetParent !== null);
+  }
+
+  function onDetailKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeDetail();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const items = detailFocusables();
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  function onDetailBackdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) closeDetail();
   }
 
   function pick(nodeId: string) {
@@ -617,6 +765,23 @@
       {/if}
     {/each}
 
+    <!-- A transparent, focusable button over each real score pill. Clicking (or
+         Enter/Space on) it opens the match detail card. Unplayed matchups have
+         no pill, so there's nothing to open. -->
+    {#each scoreLabels as s (s.matchId)}
+      {@const teams = matchTeams(s.matchId)}
+      {#if teams}
+        <button
+          type="button"
+          class="pill-button"
+          style={pillButtonStyle(s)}
+          aria-haspopup="dialog"
+          aria-label={t.matchDetailPill(t.matchup(teamName(teams.winner), teamName(teams.loser)))}
+          onclick={(e) => openDetail(s.matchId, e)}
+        ></button>
+      {/if}
+    {/each}
+
     {#if needsChampion}
       <div class="champ-hint" role="status">
         <span class="champ-hint__pill">
@@ -789,6 +954,104 @@
       </div>
 
       <p class="share-status" aria-live="polite">{statusLabel || ' '}</p>
+    </div>
+  </div>
+{/if}
+
+{#if detailCard}
+  <div class="detail-overlay" role="presentation" onclick={onDetailBackdropClick}>
+    <div
+      class="detail-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="detail-card-title"
+      tabindex="-1"
+      bind:this={detailEl}
+      onkeydown={onDetailKeydown}
+    >
+      <div class="detail-card__head">
+        <h2 id="detail-card-title" class="detail-card__title">
+          {t.matchup(detailCard.winnerName, detailCard.loserName)}
+        </h2>
+        <button
+          class="share-close"
+          onclick={closeDetail}
+          aria-label={t.matchDetailClose}
+          bind:this={detailCloseBtn}
+        >
+          ×
+        </button>
+      </div>
+
+      {#if detailCard.score}
+        <p class="detail-card__score">
+          <img class="detail-card__flag" src={flagUrl(detailCard.winner)} alt="" aria-hidden="true" />
+          <span class="detail-card__scoreline">
+            {detailCard.score.winner}<span class="detail-card__dash" aria-hidden="true">–</span>{detailCard.score.loser}
+          </span>
+          <img class="detail-card__flag" src={flagUrl(detailCard.loser)} alt="" aria-hidden="true" />
+        </p>
+      {/if}
+
+      {#if detailCard.venue || detailCard.kickoff}
+        <dl class="detail-card__facts">
+          {#if detailCard.venue}
+            <div class="detail-fact">
+              <dt>{t.matchVenue}</dt>
+              <dd>{detailCard.venue.stadium} · {detailCard.venue.city}</dd>
+            </div>
+          {/if}
+          {#if detailCard.kickoff}
+            <div class="detail-fact">
+              <dt>{t.matchKickoff}</dt>
+              <dd>{formatKickoff(detailCard.kickoff, i18n.locale)}</dd>
+            </div>
+          {/if}
+        </dl>
+      {/if}
+
+      {#if detailCard.extraTime || detailCard.penalties}
+        <ul class="detail-card__status">
+          {#if detailCard.extraTime}
+            <li>{t.matchAfterExtraTime}</li>
+          {/if}
+          {#if detailCard.penalties}
+            <li>
+              {t.matchPenalties(
+                detailCard.winnerName,
+                `${detailCard.penalties.winner}–${detailCard.penalties.loser}`
+              )}
+            </li>
+          {/if}
+        </ul>
+      {/if}
+
+      {#if detailCard.goals && detailCard.goals.length}
+        <div class="detail-card__goals">
+          <h3>{t.matchGoals}</h3>
+          <ul>
+            {#each detailCard.goals as g, i (i)}
+              <li>
+                <img
+                  class="detail-card__flag detail-card__flag--sm"
+                  src={flagUrl(g.team)}
+                  alt={teamName(g.team)}
+                />
+                <span class="detail-goal__scorer">
+                  {g.scorer}{#if g.penalty}&nbsp;{t.matchGoalPenalty}{/if}
+                </span>
+                {#if g.minute != null}
+                  <span class="detail-goal__minute">{g.minute}'</span>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
+
+      {#if !detailHasBody}
+        <p class="detail-card__empty">{t.matchNoDetails}</p>
+      {/if}
     </div>
   </div>
 {/if}
@@ -1068,6 +1331,28 @@
   .node-button:focus-visible {
     outline: 3px solid var(--gold);
     outline-offset: 3px;
+  }
+
+  /* A transparent, focusable hit target laid over each SVG score pill (which the
+     SVG paints underneath). Sized to the pill but never smaller than a
+     comfortable tap target. */
+  .pill-button {
+    position: absolute;
+    z-index: 3;
+    top: var(--pill-y);
+    left: var(--pill-x);
+    width: max(var(--pill-w), 2.75rem);
+    height: max(var(--pill-h), 1.6rem);
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+  }
+  .pill-button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
   }
 
   /* Sits just below the centre trophy and points up at it — only shown once
@@ -1410,6 +1695,154 @@
     outline: 2px solid var(--gold);
     outline-offset: 2px;
   }
+
+  /* ── Match detail card ─────────────────────────────────────────────────── */
+  .detail-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(26, 25, 22, 0.55);
+    backdrop-filter: blur(2px);
+    animation: overlay-in 0.15s ease;
+  }
+  .detail-card {
+    box-sizing: border-box;
+    width: min(92vw, 380px);
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 1.1rem 1.2rem 1.35rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(26, 25, 22, 0.35);
+    animation: modal-in 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .detail-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .detail-card__title {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+  }
+  .detail-card__score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin: 0 0 1rem;
+  }
+  .detail-card__flag {
+    width: 1.5rem;
+    height: 1.05rem;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .detail-card__flag--sm {
+    width: 1.15rem;
+    height: 0.8rem;
+    flex: 0 0 auto;
+  }
+  .detail-card__scoreline {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+  }
+  .detail-card__dash {
+    margin: 0 0.15em;
+    color: var(--muted);
+  }
+  .detail-card__facts {
+    margin: 0 0 0.9rem;
+    display: grid;
+    gap: 0.65rem;
+  }
+  .detail-fact {
+    display: grid;
+    gap: 0.1rem;
+  }
+  .detail-fact dt {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .detail-fact dd {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--ink);
+  }
+  .detail-card__status {
+    margin: 0 0 0.9rem;
+    padding: 0.55rem 0.75rem;
+    list-style: none;
+    display: grid;
+    gap: 0.25rem;
+    background: var(--hover-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .detail-card__goals h3 {
+    margin: 0 0 0.4rem;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .detail-card__goals ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.4rem;
+  }
+  .detail-card__goals li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--ink);
+  }
+  .detail-goal__scorer {
+    flex: 1 1 auto;
+  }
+  .detail-goal__minute {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .detail-card__empty {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .detail-overlay,
+    .detail-card {
+      animation: none;
+    }
+  }
+
   .share-preview {
     box-sizing: border-box;
     display: flex;

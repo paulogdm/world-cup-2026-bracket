@@ -93,6 +93,27 @@ export interface Strings {
   editFinalScore: string;
   /** Share message when a champion is crowned and a final score is predicted. */
   shareChampionScore: (name: string, score: string) => string;
+  // ── Match detail card ──────────────────────────────────────────────────────
+  /** A matchup line joining two team names, e.g. "England vs Mexico". */
+  matchup: (a: string, b: string) => string;
+  /** Accessible label for a clickable score pill, given the matchup line. */
+  matchDetailPill: (matchup: string) => string;
+  /** Accessible label for the detail card's close button. */
+  matchDetailClose: string;
+  /** Section label: the stadium and city where the match was played. */
+  matchVenue: string;
+  /** Section label: kick-off, shown in the visitor's own timezone. */
+  matchKickoff: string;
+  /** Note that the match was decided after extra time (prorrogação). */
+  matchAfterExtraTime: string;
+  /** Penalty-shootout result, e.g. "England won 4–3 on penalties". */
+  matchPenalties: (winner: string, score: string) => string;
+  /** Section label: the goals scored. */
+  matchGoals: string;
+  /** Suffix marking a penalty-kick goal, appended after a scorer. */
+  matchGoalPenalty: string;
+  /** Shown when a played match has no further detail recorded yet. */
+  matchNoDetails: string;
 }
 
 export const STRINGS: Record<Locale, Strings> = {
@@ -145,7 +166,17 @@ export const STRINGS: Record<Locale, Strings> = {
     removeGoal: 'Remove a goal',
     finalScoreDone: 'OK',
     editFinalScore: 'Edit the final score',
-    shareChampionScore: (name, score) => `Check my prediction: ${name} wins the final ${score} to be champion!`
+    shareChampionScore: (name, score) => `Check my prediction: ${name} wins the final ${score} to be champion!`,
+    matchup: (a, b) => `${a} vs ${b}`,
+    matchDetailPill: (matchup) => `Match details: ${matchup}`,
+    matchDetailClose: 'Close match details',
+    matchVenue: 'Stadium',
+    matchKickoff: 'Kick-off',
+    matchAfterExtraTime: 'After extra time',
+    matchPenalties: (winner, score) => `${winner} won ${score} on penalties`,
+    matchGoals: 'Goals',
+    matchGoalPenalty: '(pen.)',
+    matchNoDetails: 'No further details recorded yet.'
   },
   'pt-BR': {
     langLabel: 'Idioma',
@@ -196,7 +227,17 @@ export const STRINGS: Record<Locale, Strings> = {
     removeGoal: 'Remover gol',
     finalScoreDone: 'OK',
     editFinalScore: 'Editar o placar da final',
-    shareChampionScore: (name, score) => `Veja meu palpite: ${name} vence a final por ${score} e é campeão!`
+    shareChampionScore: (name, score) => `Veja meu palpite: ${name} vence a final por ${score} e é campeão!`,
+    matchup: (a, b) => `${a} x ${b}`,
+    matchDetailPill: (matchup) => `Detalhes da partida: ${matchup}`,
+    matchDetailClose: 'Fechar detalhes da partida',
+    matchVenue: 'Estádio',
+    matchKickoff: 'Início',
+    matchAfterExtraTime: 'Após a prorrogação',
+    matchPenalties: (winner, score) => `${winner} venceu por ${score} nos pênaltis`,
+    matchGoals: 'Gols',
+    matchGoalPenalty: '(pên.)',
+    matchNoDetails: 'Nenhum detalhe adicional registrado ainda.'
   },
   es: {
     langLabel: 'Idioma',
@@ -247,6 +288,16 @@ export const STRINGS: Record<Locale, Strings> = {
     removeGoal: 'Quitar gol',
     finalScoreDone: 'OK',
     editFinalScore: 'Editar el marcador de la final',
-    shareChampionScore: (name, score) => `Mira mi pronóstico: ¡${name} gana la final ${score} y es campeón!`
+    shareChampionScore: (name, score) => `Mira mi pronóstico: ¡${name} gana la final ${score} y es campeón!`,
+    matchup: (a, b) => `${a} vs ${b}`,
+    matchDetailPill: (matchup) => `Detalles del partido: ${matchup}`,
+    matchDetailClose: 'Cerrar detalles del partido',
+    matchVenue: 'Estadio',
+    matchKickoff: 'Inicio',
+    matchAfterExtraTime: 'Tras la prórroga',
+    matchPenalties: (winner, score) => `${winner} ganó ${score} en la tanda de penales`,
+    matchGoals: 'Goles',
+    matchGoalPenalty: '(pen.)',
+    matchNoDetails: 'Aún no hay más detalles registrados.'
   }
 };
