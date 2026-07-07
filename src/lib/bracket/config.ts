@@ -111,7 +111,7 @@ export const matchScores: Record<string, string> = {
   'R16-01': '1-0', //  France beat Paraguay
   'R16-02': '3-0', //  Morocco beat Canada
   'R16-03': '1-0', //  Spain beat Portugal (Mikel Merino 90+1' — Ronaldo's last World Cup match)
-  'R16-04': '3-1', //  Belgium beat United States
+  'R16-04': '4-1', //  Belgium beat United States
   'R16-05': '2-1', //  Norway beat Brazil
   'R16-06': '3-2'  //  England beat Mexico (Bellingham ×2, Kane pen; Quiñones, Jiménez pen)
 };
