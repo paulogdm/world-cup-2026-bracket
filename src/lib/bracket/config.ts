@@ -50,7 +50,7 @@ export const defaultResults: Record<string, TeamId> = {
   'R16-04': 'be',  // United States vs Belgium   plays 2026-07-06 (kickoff TBD)  ✅ Belgium won
   'R16-05': 'no',  // Brazil vs Norway   ends ~2026-07-05T22:00Z  ✅ Norway won
   'R16-06': 'gb-eng',  // Mexico vs England   ends ~2026-07-06T02:00Z  ✅ England won
-  // 'R16-07': '',  // winner R32-13 vs winner R32-14
+  'R16-07': 'ar',  // Argentina vs Egypt   ends ~2026-07-07T18:00Z  ✅ Argentina won
   // 'R16-08': '',  // winner R32-15 vs winner R32-16
 
   // ── Quarter-finals ───────────────────────────────────────────────────────
@@ -113,5 +113,6 @@ export const matchScores: Record<string, string> = {
   'R16-03': '1-0', //  Spain beat Portugal (Mikel Merino 90+1' — Ronaldo's last World Cup match)
   'R16-04': '3-1', //  Belgium beat United States
   'R16-05': '2-1', //  Norway beat Brazil
-  'R16-06': '3-2'  //  England beat Mexico (Bellingham ×2, Kane pen; Quiñones, Jiménez pen)
+  'R16-06': '3-2', //  England beat Mexico (Bellingham ×2, Kane pen; Quiñones, Jiménez pen)
+  'R16-07': '3-2'  //  Argentina beat Egypt
 };
