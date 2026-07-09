@@ -118,5 +118,5 @@ export const matchScores: Record<string, string> = {
   'R16-08': '0-0', //  Switzerland beat Colombia (on penalties)
 
   // ── Quarter-finals ───────────────────────────────────────────────────────
-  'QF-01': '2-1'  //  France beat Morocco
+  'QF-01': '2-0'  //  France beat Morocco
 };
