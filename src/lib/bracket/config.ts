@@ -54,7 +54,7 @@ export const defaultResults: Record<string, TeamId> = {
   'R16-08': 'ch',  // Switzerland vs Colombia   ends ~2026-07-07T22:00Z  ✅ Switzerland won
 
   // ── Quarter-finals ───────────────────────────────────────────────────────
-  // 'QF-01': '',  // winner R16-01 vs winner R16-02
+  'QF-01': 'fr',  // France vs Morocco   ends ~2026-07-09T22:00Z  ✅ France won
   // 'QF-02': '',  // winner R16-03 vs winner R16-04
   // 'QF-03': '',  // winner R16-05 vs winner R16-06
   // 'QF-04': '',  // winner R16-07 vs winner R16-08
@@ -115,5 +115,8 @@ export const matchScores: Record<string, string> = {
   'R16-05': '2-1', //  Norway beat Brazil
   'R16-06': '3-2', //  England beat Mexico (Bellingham ×2, Kane pen; Quiñones, Jiménez pen)
   'R16-07': '3-2', //  Argentina beat Egypt
-  'R16-08': '0-0'  //  Switzerland beat Colombia (on penalties)
+  'R16-08': '0-0', //  Switzerland beat Colombia (on penalties)
+
+  // ── Quarter-finals ───────────────────────────────────────────────────────
+  'QF-01': '2-1'  //  France beat Morocco
 };
