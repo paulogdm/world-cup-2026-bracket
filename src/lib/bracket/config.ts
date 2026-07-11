@@ -56,7 +56,7 @@ export const defaultResults: Record<string, TeamId> = {
   // ── Quarter-finals ───────────────────────────────────────────────────────
   'QF-01': 'fr',  // France vs Morocco   ends ~2026-07-09T22:00Z  ✅ France won
   'QF-02': 'es',  // Spain vs Belgium   ends ~2026-07-10T21:00Z  ✅ Spain won
-  // 'QF-03': '',  // winner R16-05 vs winner R16-06
+  'QF-03': 'no',  // Norway vs England   ends ~2026-07-11T23:00Z  ✅ Norway won
   // 'QF-04': '',  // winner R16-07 vs winner R16-08
 
   // ── Semi-finals ──────────────────────────────────────────────────────────
@@ -119,5 +119,6 @@ export const matchScores: Record<string, string> = {
 
   // ── Quarter-finals ───────────────────────────────────────────────────────
   'QF-01': '2-0', //  France beat Morocco
-  'QF-02': '2-1'  //  Spain beat Belgium
+  'QF-02': '2-1', //  Spain beat Belgium
+  'QF-03': '2-0'  //  Norway beat England
 };
