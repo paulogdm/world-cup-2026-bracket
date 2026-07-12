@@ -121,5 +121,5 @@ export const matchScores: Record<string, string> = {
   'QF-01': '2-0', //  France beat Morocco
   'QF-02': '2-1', //  Spain beat Belgium
   'QF-03': '2-1', //  England beat Norway
-  'QF-04': '2-1'  //  Argentina beat Switzerland
+  'QF-04': '3-1'  //  Argentina beat Switzerland
 };
