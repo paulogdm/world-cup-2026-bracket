@@ -61,7 +61,7 @@ export const defaultResults: Record<string, TeamId> = {
 
   // ── Semi-finals ──────────────────────────────────────────────────────────
   'SF-01': 'es',  // France vs Spain   ends ~2026-07-14T22:00Z  ✅ Spain won
-  // 'SF-02': '',  // winner QF-03 vs winner QF-04  (right finalist)
+  'SF-02': 'ar',  // England vs Argentina   ends ~2026-07-15T22:00Z  ✅ Argentina won
 
   // ── Final ────────────────────────────────────────────────────────────────
   // 'F': ''       // winner SF-01 vs winner SF-02
@@ -124,5 +124,6 @@ export const matchScores: Record<string, string> = {
   'QF-04': '3-1', //  Argentina beat Switzerland
 
   // ── Semi-finals ──────────────────────────────────────────────────────────
-  'SF-01': '2-0'  //  Spain beat France
+  'SF-01': '2-0', //  Spain beat France
+  'SF-02': '2-1'  //  Argentina beat England
 };
