@@ -278,7 +278,7 @@
        teams) get a label — kept for posterity. -->
   {#each scoreLabels as s (s.matchId)}
     {@const halfW = s.text.length * 3.1 + 5}
-    <g class="score" transform="translate({s.x},{s.y})">
+    <g class="score" transform="translate({s.x},{s.y}) scale({s.scale})">
       <rect
         x={-halfW}
         y="-8.5"
