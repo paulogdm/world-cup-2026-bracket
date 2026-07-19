@@ -128,5 +128,5 @@ export const matchScores: Record<string, string> = {
   'SF-02': '2-1', //  Argentina beat England
 
   // ── Final ────────────────────────────────────────────────────────────────
-  'F': '2-1'  //  Spain beat Argentina
+  'F': '1-0'  //  Spain beat Argentina
 };
