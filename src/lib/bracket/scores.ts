@@ -47,6 +47,13 @@ export function scoreLabelsFor(picks: Picks): ScoreLabel[] {
   const labels: ScoreLabel[] = [];
 
   for (const [matchId, raw] of Object.entries(matchScores)) {
+    // The Final is the exception: its winner isn't seated beside a connector but
+    // crowned at the centre of the board, wearing the champion flag writ large
+    // with the trophy above it. A normal score pill lands dead-centre on that
+    // flag — a small stamp cluttering the celebration — so the Final gets no
+    // label here. The centre champion treatment (the "big one") is untouched.
+    if (matchId === 'F') continue;
+
     const parsed = parse(raw);
     if (!parsed) continue;
 
