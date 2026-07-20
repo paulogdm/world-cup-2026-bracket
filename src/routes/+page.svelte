@@ -56,8 +56,12 @@
   let ready = $state(false);
   let activePopoverNode = $state<string | null>(null);
   // Whether the grand-final score predictor is expanded (steppers) or collapsed
-  // to a compact score chip. UI-only — not part of the shared bracket.
-  let scoreEditorOpen = $state(true);
+  // to a compact score chip. UI-only — not part of the shared bracket. Starts
+  // collapsed: when the page loads with a champion already decided — the real
+  // results, or a shared prediction — the final has effectively happened, so we
+  // show the settled chip rather than the editor. It only springs open when a
+  // champion is crowned live during this session (see the celebrate effect).
+  let scoreEditorOpen = $state(false);
   // Tracks the OS preference so a `system` theme resolves to a concrete
   // light/dark for the rasterised export (which can't read `light-dark()`).
   let systemDark = $state(false);
@@ -262,7 +266,13 @@
       confettiArmed = true;
       return;
     }
-    if (current && current !== lastChamp) celebrate(current);
+    if (current && current !== lastChamp) {
+      celebrate(current);
+      // A champion crowned live invites a scoreline — spring the editor open.
+      // (On the initial load of real results / a shared prediction the arm above
+      // returns early, so this never fires and the settled chip stays collapsed.)
+      scoreEditorOpen = true;
+    }
     lastChamp = current;
   });
 
